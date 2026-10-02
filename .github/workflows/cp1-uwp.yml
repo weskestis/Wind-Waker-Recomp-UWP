@@ -65,67 +65,19 @@ jobs:
 
           python "$src\tools\fetch_dawn_dependencies.py" -d $src
 
-          # Dawn's D3D platform layer still probes desktop Windows version/registry
-          # state in InitWindowsVersion(). Those APIs are unavailable to UWP and
-          # the build number is only advisory, so make that function inert for
-          # this Xbox/AppContainer build.
+          # Dawn's Windows-version registry probe is desktop-only. Keep the
+          # real WINUWP DXGI/D3D12 paths, but make this advisory probe inert.
           $platformFunctions = Join-Path $src "src\dawn\native\d3d\PlatformFunctions.cpp"
           $text = Get-Content $platformFunctions -Raw
-          $old = @'
-void PlatformFunctions::InitWindowsVersion() {
-    // Currently we only care about the build number of Windows 10 and Windows 11.
-    if (!IsWindows10OrGreater()) {
-        return;
-    }
-
-    // Referenced from base/win/windows_version.cc in Chromium
-    constexpr wchar_t kRegKeyWindowsNTCurrentVersion[] =
-        L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
-
-    HKEY hKey;
-    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kRegKeyWindowsNTCurrentVersion, 0, KEY_QUERY_VALUE,
-                      &hKey) != ERROR_SUCCESS) {
-        return;
-    }
-
-    mCurrentBuildNumber = ReadFromSZRegistryKey(hKey, "CurrentBuildNumber");
-
-    RegCloseKey(hKey);
-}
-'@
-          $new = @'
-void PlatformFunctions::InitWindowsVersion() {
-#if DAWN_PLATFORM_IS(WINUWP)
-    // Xbox/UWP: registry/version-helper probing is desktop-only and advisory.
-    mCurrentBuildNumber = 0;
-    return;
-#else
-    // Currently we only care about the build number of Windows 10 and Windows 11.
-    if (!IsWindows10OrGreater()) {
-        return;
-    }
-
-    // Referenced from base/win/windows_version.cc in Chromium
-    constexpr wchar_t kRegKeyWindowsNTCurrentVersion[] =
-        L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
-
-    HKEY hKey;
-    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kRegKeyWindowsNTCurrentVersion, 0, KEY_QUERY_VALUE,
-                      &hKey) != ERROR_SUCCESS) {
-        return;
-    }
-
-    mCurrentBuildNumber = ReadFromSZRegistryKey(hKey, "CurrentBuildNumber");
-
-    RegCloseKey(hKey);
-#endif
-}
-'@
-          if (-not $text.Contains($old)) {
-            throw "Dawn PlatformFunctions.cpp version-probe patch context not found"
-          }
-          Set-Content -Path $platformFunctions -Value $text.Replace($old, $new) -NoNewline
-
+          $open = "void PlatformFunctions::InitWindowsVersion() {`r`n"
+          $openReplacement = "void PlatformFunctions::InitWindowsVersion() {`r`n#if DAWN_PLATFORM_IS(WINUWP)`r`n    mCurrentBuildNumber = 0;`r`n    return;`r`n#else`r`n"
+          if (-not $text.Contains($open)) { throw "Dawn InitWindowsVersion opening context not found" }
+          $text = $text.Replace($open, $openReplacement)
+          $close = "    RegCloseKey(hKey);`r`n}"
+          $closeReplacement = "    RegCloseKey(hKey);`r`n#endif`r`n}"
+          if (-not $text.Contains($close)) { throw "Dawn InitWindowsVersion closing context not found" }
+          $text = $text.Replace($close, $closeReplacement)
+          Set-Content -Path $platformFunctions -Value $text -NoNewline
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
 
