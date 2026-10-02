@@ -19,6 +19,9 @@ static int cp4_dispatch(CPUState* cpu, u32 address)
     cpu->pc = 0x80001004u;
     cpu->downcount -= 4;
 
+    if (cpu->ram != nullptr && cpu->ram_size >= 4u)
+        mem_write32(cpu, GC_RAM_BASE, 0x43503431u);
+
     if (g_edge_service != nullptr)
         (void)g_edge_service(g_edge_service_user, cpu, cpu->pc);
 
