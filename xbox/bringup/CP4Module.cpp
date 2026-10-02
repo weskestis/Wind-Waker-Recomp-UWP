@@ -4,6 +4,8 @@
 
 typedef bool (*BluewakeEdgeServiceFn)(void* user, CPUState* cpu, u32 address);
 
+extern "C" void ppc_set_mem_write_journal(PPCMemWriteJournal fn, void* user);
+
 static BluewakeEdgeServiceFn g_edge_service = nullptr;
 static void* g_edge_service_user = nullptr;
 
