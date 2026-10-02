@@ -7,12 +7,12 @@
   <Identity
     Name="WesKestis.WindWakerRecompUWP.CP1"
     Publisher="CN=WindWakerRecompUWP"
-    Version="0.6.1.0" />
+    Version="0.6.2.0" />
   <mp:PhoneIdentity
     PhoneProductId="7c3d8f51-5a56-4a03-a6bc-9f28bb15e6d0"
     PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
-    <DisplayName>Wind Waker Recomp UWP CP6.1</DisplayName>
+    <DisplayName>Wind Waker Recomp UWP CP6.2</DisplayName>
     <PublisherDisplayName>Wes Kestis</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -31,8 +31,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="BlueWakeUWP.App">
       <uap:VisualElements
-        DisplayName="Wind Waker Recomp UWP CP6.1"
-        Description="Xbox/UWP XAudio2-safe recovery probe"
+        DisplayName="Wind Waker Recomp UWP CP6.2"
+        Description="Xbox/UWP verified XAudio2 playback probe"
         BackgroundColor="#07101C"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
