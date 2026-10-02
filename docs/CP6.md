@@ -77,3 +77,22 @@ A successful CP6 launch should also play one short tone.
 
 No Nintendo disc data, extracted files, generated translated game source, or
 saves are stored in this public repository.
+
+
+## CP6.0 Xbox launch-crash finding
+
+The first physical-Series-X CP6 package (0.6.0.0) crashed during process
+activation before the diagnostic renderer appeared.
+
+The packaged prebuilt desktop `webgpu_dawn.dll` was inspected and imports
+desktop-only Windows modules including `USER32.dll`. Because the executable
+linked that DLL normally, the Xbox AppContainer loader tried to load it before
+the app reached `SetWindow`.
+
+That package is rejected as an Xbox baseline.
+
+CP6.1 rebuilds the exact pinned Dawn source with CMake
+`CMAKE_SYSTEM_NAME=WindowsStore`, D3D12 only, Windows UI/CoreWindow enabled,
+and `DAWN_BUILD_MONOLITHIC_LIBRARY=STATIC`. The final Xbox executable is
+audited to reject any `webgpu_dawn.dll` or `USER32.dll` import, and no
+desktop Dawn/DXC runtime DLLs are packaged.
