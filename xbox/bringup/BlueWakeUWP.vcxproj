@@ -82,6 +82,7 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="RuntimeProbe.cpp" />
     <ClCompile Include="CP3Probe.cpp" />
+    <ClCompile Include="CP4Probe.cpp" />
     <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
       <Link>Upstream\cycle_domain.c</Link>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -109,11 +110,20 @@
       <Link>CP3Module.dll</Link>
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="gGZLE01_recomp.dll">
+      <Link>gGZLE01_recomp.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="CP3Module.vcxproj">
       <Project>{92D42C91-7B61-4C70-9722-390078B1F1E7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <ProjectReference Include="CP4RealModule.vcxproj">
+      <Project>{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
