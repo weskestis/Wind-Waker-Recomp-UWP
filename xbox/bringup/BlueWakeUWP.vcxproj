@@ -120,18 +120,6 @@
       <Link>gGZLE01_recomp.dll</Link>
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="webgpu_dawn.dll">
-      <Link>webgpu_dawn.dll</Link>
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="dxcompiler.dll">
-      <Link>dxcompiler.dll</Link>
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="dxil.dll">
-      <Link>dxil.dll</Link>
-      <DeploymentContent>true</DeploymentContent>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
