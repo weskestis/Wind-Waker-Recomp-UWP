@@ -3,6 +3,8 @@ name: CP1 Xbox UWP Bring-up
 on:
   push:
     branches: [ xbox-uwp ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
