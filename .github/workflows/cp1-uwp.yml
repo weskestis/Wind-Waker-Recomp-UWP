@@ -67,7 +67,8 @@ jobs:
 
           cmake -S $src -B $build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_SYSTEM_NAME=WindowsStore `
-            -DCMAKE_SYSTEM_VERSION=10.0.22621.0 `
+            -DCMAKE_SYSTEM_VERSION=10.0 `
+            -DCMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION=10.0.22621.0 `
             -DDAWN_BUILD_MONOLITHIC_LIBRARY=STATIC `
             -DBUILD_SHARED_LIBS=OFF `
             -DDAWN_ENABLE_D3D12=ON `
