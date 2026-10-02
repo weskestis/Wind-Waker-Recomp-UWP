@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CP3Module", "CP3Module.vcxp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CP4RealModule", "CP4RealModule.vcxproj", "{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CP5Runtime", "CP5Runtime.vcxproj", "{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -26,5 +28,9 @@ Global
 		{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}.Debug|x64.Build.0 = Debug|x64
 		{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}.Release|x64.ActiveCfg = Release|x64
 		{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}.Release|x64.Build.0 = Release|x64
+		{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}.Debug|x64.ActiveCfg = Debug|x64
+		{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}.Debug|x64.Build.0 = Debug|x64
+		{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}.Release|x64.ActiveCfg = Release|x64
+		{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal
