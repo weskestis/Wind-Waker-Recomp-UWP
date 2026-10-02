@@ -13,6 +13,8 @@ using namespace Windows::Gaming::Input;
 using namespace Windows::Storage;
 using namespace Windows::UI::Core;
 
+extern "C" bool bluewake_cp2_runtime_self_test(void);
+
 namespace BlueWakeUWP
 {
     static void ThrowIfFailed(HRESULT hr)
@@ -114,7 +116,7 @@ namespace BlueWakeUWP
             }
         }
 
-        void Render(bool aHeld)
+        void Render(bool aHeld, bool runtimeOk)
         {
             ThrowIfFailed(m_allocators[m_frameIndex]->Reset());
             ThrowIfFailed(m_commandList->Reset(m_allocators[m_frameIndex].Get(), nullptr));
@@ -130,9 +132,10 @@ namespace BlueWakeUWP
             D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
             rtv.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvIncrement;
 
-            const float idle[4] = { 0.025f, 0.055f, 0.095f, 1.0f };
+            const float pass[4] = { 0.025f, 0.055f, 0.095f, 1.0f };
+            const float fail[4] = { 0.30f, 0.015f, 0.015f, 1.0f };
             const float active[4] = { 0.035f, 0.30f, 0.10f, 1.0f };
-            const float* clear = aHeld ? active : idle;
+            const float* clear = aHeld ? active : (runtimeOk ? pass : fail);
             m_commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
             m_commandList->ClearRenderTargetView(rtv, clear, 0, nullptr);
 
@@ -205,6 +208,9 @@ namespace BlueWakeUWP
                 }
             }
             values->Insert("CP1LaunchCount", PropertyValue::CreateInt32(launchCount + 1));
+
+            m_runtimeOk = bluewake_cp2_runtime_self_test();
+            values->Insert("CP2RuntimeProbe", PropertyValue::CreateBoolean(m_runtimeOk));
         }
 
         virtual void SetWindow(CoreWindow^ window)
@@ -228,7 +234,7 @@ namespace BlueWakeUWP
                 if (m_visible)
                 {
                     window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-                    m_renderer.Render(IsGamepadAHeld());
+                    m_renderer.Render(IsGamepadAHeld(), m_runtimeOk);
                 }
                 else
                 {
@@ -272,6 +278,7 @@ namespace BlueWakeUWP
         CoreWindow^ m_window = nullptr;
         bool m_closed = false;
         bool m_visible = true;
+        bool m_runtimeOk = false;
         D3D12Probe m_renderer;
     };
 
