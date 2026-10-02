@@ -51,6 +51,7 @@
       <WarningLevel>Level4</WarningLevel>
       <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;$(ProjectDir)..\..\deps\recompcore\Source\Core\Core\PowerPC\StaticRecomp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ProjectDir)CP4MsvcCompat.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <AdditionalDependencies>windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
