@@ -83,18 +83,23 @@
     <ClCompile Include="RuntimeProbe.cpp" />
     <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
       <Link>Upstream\cycle_domain.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\upstream\runtime\host\src\ipl_sram.c">
       <Link>Upstream\ipl_sram.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\upstream\runtime\host\src\pad_event_schedule.c">
       <Link>Upstream\pad_event_schedule.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\upstream\runtime\host\src\pad_wire.c">
       <Link>Upstream\pad_wire.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\upstream\runtime\host\src\rel_scratch_allocator.c">
       <Link>Upstream\rel_scratch_allocator.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
   </ItemGroup>
 
