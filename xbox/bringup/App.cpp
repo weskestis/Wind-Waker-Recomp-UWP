@@ -19,6 +19,9 @@ extern "C" bool bluewake_cp3_storage_self_test(
 extern "C" bool bluewake_cp3_module_self_test(void);
 extern "C" bool bluewake_cp4_real_module_self_test(void);
 extern "C" bool bluewake_cp5_chassis_self_test(void);
+extern "C" bool bluewake_cp6_dawn_self_test(
+    void* coreWindow, uint32_t width, uint32_t height);
+extern "C" bool bluewake_cp6_audio_self_test(void);
 
 namespace BlueWakeUWP
 {
@@ -121,7 +124,15 @@ namespace BlueWakeUWP
             }
         }
 
-        void Render(bool aHeld, bool runtimeOk, bool storageOk, bool moduleOk, bool realModuleOk, bool chassisOk)
+        void Render(
+            bool aHeld,
+            bool runtimeOk,
+            bool storageOk,
+            bool moduleOk,
+            bool realModuleOk,
+            bool chassisOk,
+            bool dawnOk,
+            bool audioOk)
         {
             ThrowIfFailed(m_allocators[m_frameIndex]->Reset());
             ThrowIfFailed(m_commandList->Reset(m_allocators[m_frameIndex].Get(), nullptr));
@@ -143,6 +154,8 @@ namespace BlueWakeUWP
             const float moduleFail[4] = { 0.24f, 0.02f, 0.28f, 1.0f };
             const float realModuleFail[4] = { 0.34f, 0.28f, 0.01f, 1.0f };
             const float chassisFail[4] = { 0.01f, 0.24f, 0.30f, 1.0f };
+            const float dawnFail[4] = { 0.34f, 0.02f, 0.14f, 1.0f };
+            const float audioFail[4] = { 0.34f, 0.34f, 0.34f, 1.0f };
             const float active[4] = { 0.035f, 0.30f, 0.10f, 1.0f };
 
             const float* clear = pass;
@@ -156,6 +169,10 @@ namespace BlueWakeUWP
                 clear = realModuleFail;
             else if (!chassisOk)
                 clear = chassisFail;
+            else if (!dawnOk)
+                clear = dawnFail;
+            else if (!audioOk)
+                clear = audioFail;
             if (aHeld)
                 clear = active;
             m_commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
@@ -282,6 +299,27 @@ namespace BlueWakeUWP
             window->VisibilityChanged += ref new TypedEventHandler<CoreWindow^, VisibilityChangedEventArgs^>(
                 this, &App::OnVisibilityChanged);
 
+            auto bounds = window->Bounds;
+            const uint32_t width =
+                static_cast<uint32_t>(bounds.Width > 1.0f ? bounds.Width : 1920.0f);
+            const uint32_t height =
+                static_cast<uint32_t>(bounds.Height > 1.0f ? bounds.Height : 1080.0f);
+
+            m_dawnOk = bluewake_cp6_dawn_self_test(
+                reinterpret_cast<IUnknown*>(window), width, height);
+            m_audioOk = bluewake_cp6_audio_self_test();
+
+            auto values = ApplicationData::Current->LocalSettings->Values;
+            values->Insert(
+                "CP6DawnCoreWindowProbe",
+                PropertyValue::CreateBoolean(m_dawnOk));
+            values->Insert(
+                "CP6XAudio2Probe",
+                PropertyValue::CreateBoolean(m_audioOk));
+
+            // The Dawn probe releases its CoreWindow surface before returning.
+            // Keep the CP1 renderer afterward so the diagnostic screen remains
+            // available even if the one-shot WebGPU clear was not visible.
             m_renderer.Initialize(window);
         }
 
@@ -298,7 +336,8 @@ namespace BlueWakeUWP
                     window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
                     m_renderer.Render(
                         IsGamepadAHeld(), m_runtimeOk, m_storageOk,
-                        m_moduleOk, m_realModuleOk, m_chassisOk);
+                        m_moduleOk, m_realModuleOk, m_chassisOk,
+                        m_dawnOk, m_audioOk);
                 }
                 else
                 {
@@ -346,6 +385,8 @@ namespace BlueWakeUWP
         bool m_moduleOk = false;
         bool m_realModuleOk = false;
         bool m_chassisOk = false;
+        bool m_dawnOk = false;
+        bool m_audioOk = false;
         D3D12Probe m_renderer;
     };
 
