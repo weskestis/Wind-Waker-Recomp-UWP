@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7EC02B71-3173-4BCB-97EA-7D508FC49221}</ProjectGuid>
+    <ProjectName>BlueWakeUWP</ProjectName>
+    <RootNamespace>BlueWakeUWP</RootNamespace>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
+    <AppContainerApplication>true</AppContainerApplication>
+    <ApplicationType>Windows Store</ApplicationType>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(DawnIncludeDir);$(ProjectDir)..\..\upstream\runtime\host\src;$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;$(ProjectDir)..\..\deps\recompcore\Source\Core\Core\PowerPC\StaticRecomp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>webgpu_dawn.lib;d3d12.lib;d3d11.lib;d3dcompiler.lib;dxgi.lib;dxguid.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(DawnLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="RuntimeProbe.cpp" />
+    <ClCompile Include="CP3Probe.cpp" />
+    <ClCompile Include="CP4Probe.cpp" />
+    <ClCompile Include="CP5Probe.cpp" />
+    <ClCompile Include="CP6Probe.cpp">
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
+      <Link>Upstream\cycle_domain.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\ipl_sram.c">
+      <Link>Upstream\ipl_sram.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\pad_event_schedule.c">
+      <Link>Upstream\pad_event_schedule.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\pad_wire.c">
+      <Link>Upstream\pad_wire.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\rel_scratch_allocator.c">
+      <Link>Upstream\rel_scratch_allocator.c</Link>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="CP3Module.dll">
+      <Link>CP3Module.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="gGZLE01_recomp.dll">
+      <Link>gGZLE01_recomp.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CP3Module.vcxproj">
+      <Project>{92D42C91-7B61-4C70-9722-390078B1F1E7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <ProjectReference Include="CP4RealModule.vcxproj">
+      <Project>{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <ProjectReference Include="CP5Runtime.vcxproj">
+      <Project>{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Image Include="Assets\StoreLogo.png" />
+    <Image Include="Assets\Square150x150Logo.png" />
+    <Image Include="Assets\Square44x44Logo.png" />
+    <Image Include="Assets\SplashScreen.png" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
