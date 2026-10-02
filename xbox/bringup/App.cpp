@@ -28,8 +28,6 @@ namespace BlueWakeUWP
     public:
         void Initialize(CoreWindow^ window)
         {
-            m_window = window;
-
             UINT factoryFlags = 0;
 #if defined(_DEBUG)
             ComPtr<ID3D12Debug> debug;
@@ -170,7 +168,6 @@ namespace BlueWakeUWP
         }
 
         static constexpr UINT FrameCount = 2;
-        CoreWindow^ m_window = nullptr;
         ComPtr<IDXGIFactory4> m_factory;
         ComPtr<ID3D12Device> m_device;
         ComPtr<ID3D12CommandQueue> m_queue;
@@ -212,7 +209,6 @@ namespace BlueWakeUWP
 
         virtual void SetWindow(CoreWindow^ window)
         {
-            m_window = window;
             window->Closed += ref new TypedEventHandler<CoreWindow^, CoreWindowEventArgs^>(
                 this, &App::OnClosed);
             window->VisibilityChanged += ref new TypedEventHandler<CoreWindow^, VisibilityChangedEventArgs^>(
@@ -225,16 +221,18 @@ namespace BlueWakeUWP
 
         virtual void Run()
         {
+            auto window = CoreWindow::GetForCurrentThread();
+
             while (!m_closed)
             {
                 if (m_visible)
                 {
-                    m_window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+                    window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
                     m_renderer.Render(IsGamepadAHeld());
                 }
                 else
                 {
-                    m_window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessOneAndAllPending);
+                    window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessOneAndAllPending);
                 }
             }
         }
