@@ -7,7 +7,7 @@
   <Identity
     Name="WesKestis.WindWakerRecompUWP.CP1"
     Publisher="CN=WindWakerRecompUWP"
-    Version="0.6.0.0" />
+    Version="0.6.1.0" />
   <mp:PhoneIdentity
     PhoneProductId="7c3d8f51-5a56-4a03-a6bc-9f28bb15e6d0"
     PhonePublisherId="00000000-0000-0000-0000-000000000000" />
