@@ -30,7 +30,7 @@ extern "C" bool bluewake_cp6_audio_self_test(void)
         return false;
 
     constexpr uint32_t sampleRate = 32000;
-    constexpr uint32_t frames = 3840;
+    constexpr uint32_t frames = sampleRate * 2u;
     WAVEFORMATEX format{};
     format.wFormatTag = WAVE_FORMAT_PCM;
     format.nChannels = 2;
@@ -53,15 +53,19 @@ extern "C" bool bluewake_cp6_audio_self_test(void)
 
     s_tone.resize(frames * 2u);
     constexpr double pi = 3.14159265358979323846;
+    constexpr uint32_t fadeFrames = 640u;
     for (uint32_t frame = 0; frame < frames; ++frame) {
         const double t = static_cast<double>(frame) / sampleRate;
-        const double envelope =
-            frame < 160u ? static_cast<double>(frame) / 160.0 :
-            frame > frames - 320u
-                ? static_cast<double>(frames - frame) / 320.0
-                : 1.0;
+        double envelope = 1.0;
+        if (frame < fadeFrames)
+            envelope = static_cast<double>(frame) / fadeFrames;
+        else if (frame > frames - fadeFrames)
+            envelope = static_cast<double>(frames - frame) / fadeFrames;
+
+        // Two clearly separated notes make the test hard to miss on a TV.
+        const double frequency = frame < sampleRate ? 660.0 : 880.0;
         const int16_t sample = static_cast<int16_t>(
-            std::sin(2.0 * pi * 440.0 * t) * 5000.0 * envelope);
+            std::sin(2.0 * pi * frequency * t) * 15000.0 * envelope);
         s_tone[frame * 2u] = sample;
         s_tone[frame * 2u + 1u] = sample;
     }
@@ -77,5 +81,26 @@ extern "C" bool bluewake_cp6_audio_self_test(void)
     if (FAILED(hr))
         return false;
 
-    return SUCCEEDED(s_source->Start(0));
+    hr = s_engine->StartEngine();
+    if (FAILED(hr))
+        return false;
+
+    hr = s_source->SetVolume(0.85f);
+    if (FAILED(hr))
+        return false;
+
+    hr = s_source->Start(0);
+    if (FAILED(hr))
+        return false;
+
+    // API success alone was a false positive on CP6.1. Give the Xbox audio
+    // graph time to run, then prove that this source voice consumed samples.
+    Sleep(350);
+
+    XAUDIO2_VOICE_STATE state{};
+    s_source->GetState(&state, XAUDIO2_VOICE_NOSAMPLESPLAYED);
+    // NOSAMPLESPLAYED intentionally suppresses the counter, so fetch again
+    // without it for the actual runtime proof.
+    s_source->GetState(&state, 0);
+    return state.SamplesPlayed > 0u && state.BuffersQueued > 0u;
 }
