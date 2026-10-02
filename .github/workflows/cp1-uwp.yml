@@ -1,8 +1,8 @@
-name: CP1 Xbox UWP Bring-up
+name: CP2 Xbox Runtime Slice
 
 on:
   push:
-    branches: [ xbox-uwp ]
+    branches: [ cp2-runtime ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -33,7 +33,23 @@ jobs:
           if ($actual -ne $expected) {
             throw "Upstream pin mismatch: expected $expected, got $actual"
           }
+          git -C upstream checkout --detach FETCH_HEAD
           "UPSTREAM_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Fetch pinned RecompCore headers
+        shell: pwsh
+        run: |
+          $expected = "634895470af6e61e601f06a351f3a72888215159"
+          New-Item -ItemType Directory -Force -Path deps\recompcore | Out-Null
+          git -C deps\recompcore init
+          git -C deps\recompcore remote add origin https://github.com/elliotttate/RecompCore.git
+          git -C deps\recompcore fetch --depth=1 origin $expected
+          $actual = (git -C deps\recompcore rev-parse FETCH_HEAD).Trim()
+          if ($actual -ne $expected) {
+            throw "RecompCore pin mismatch: expected $expected, got $actual"
+          }
+          git -C deps\recompcore checkout --detach FETCH_HEAD
+          "RECOMPCORE_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Report UWP toolchain
         shell: pwsh
@@ -44,7 +60,7 @@ jobs:
           Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory |
             Select-Object -ExpandProperty Name
 
-      - name: Generate neutral CP1 package assets
+      - name: Generate neutral CP2 package assets
         shell: pwsh
         run: |
           $assetDir = Join-Path $env:GITHUB_WORKSPACE "xbox\bringup\Assets"
@@ -62,7 +78,7 @@ jobs:
           Write-Png "Square44x44Logo.png" "iVBORw0KGgoAAAANSUhEUgAAACwAAAAsCAYAAAAehFoBAAAAQElEQVR42u3OQREAIAgAMOTD1wD2rwk58LYEO3VfxyIZywgLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwv/Fx60BAGK5DGV9QAAAABJRU5ErkJggg=="
           Write-Png "SplashScreen.png" "iVBORw0KGgoAAAANSUhEUgAAAmwAAAEsCAYAAAB+Je/UAAAEk0lEQVR42u3WIQEAMAgAwTEzuwD0rwklEIi7CK8+3s86AACsdSUAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYJAAAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgkAAAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2CQAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwBgQgNUngOKD5Jj4wAAAABJRU5ErkJggg=="
 
-      - name: Generate ephemeral CP1 signing certificate
+      - name: Generate ephemeral CP2 signing certificate
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\artifacts" | Out-Null
@@ -71,17 +87,17 @@ jobs:
             -Subject "CN=WindWakerRecompUWP" `
             -KeyUsage DigitalSignature `
             -KeyExportPolicy Exportable `
-            -FriendlyName "Wind Waker Recomp UWP CP1" `
+            -FriendlyName "Wind Waker Recomp UWP CP2" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
 
-          $password = ConvertTo-SecureString -String "cp1-temporary" -Force -AsPlainText
-          $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP1.pfx"
+          $password = ConvertTo-SecureString -String "cp2-temporary" -Force -AsPlainText
+          $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP2.pfx"
           Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $password | Out-Null
-          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\artifacts\WindWakerRecompUWP-CP1.cer" | Out-Null
-          "CP1_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\artifacts\WindWakerRecompUWP-CP2.cer" | Out-Null
+          "CP2_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Build x64 UWP CP1
+      - name: Build x64 UWP CP2
         shell: pwsh
         run: |
           msbuild xbox\bringup\BlueWakeUWP.sln `
@@ -89,8 +105,8 @@ jobs:
             /p:Configuration=Release `
             /p:Platform=x64 `
             /p:AppxPackageSigningEnabled=true `
-            /p:PackageCertificateKeyFile="$env:CP1_PFX" `
-            /p:PackageCertificatePassword="cp1-temporary" `
+            /p:PackageCertificateKeyFile="$env:CP2_PFX" `
+            /p:PackageCertificatePassword="cp2-temporary" `
             /p:PackageCertificateThumbprint="" `
             /p:GenerateAppxPackageOnBuild=true `
             /p:UapAppxPackageBuildMode=SideloadOnly `
@@ -113,7 +129,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Wind-Waker-Recomp-UWP-CP1-x64
+          name: Wind-Waker-Recomp-UWP-CP2-x64
           if-no-files-found: error
           path: |
             artifacts/**
