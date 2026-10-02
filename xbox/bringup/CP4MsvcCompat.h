@@ -7,3 +7,16 @@
 #define __attribute__(x)
 #endif
 #endif
+
+
+#if defined(_MSC_VER)
+// GXRuntime's host-backed DVD layer uses POSIX 64-bit file offsets. MSVC/UWP
+// exposes the equivalent CRT operation as _fseeki64.
+#ifndef _OFF_T_DEFINED
+#define _OFF_T_DEFINED
+typedef __int64 off_t;
+#endif
+#ifndef fseeko
+#define fseeko _fseeki64
+#endif
+#endif
