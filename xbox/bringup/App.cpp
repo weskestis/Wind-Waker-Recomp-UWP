@@ -14,6 +14,9 @@ using namespace Windows::Storage;
 using namespace Windows::UI::Core;
 
 extern "C" bool bluewake_cp2_runtime_self_test(void);
+extern "C" bool bluewake_cp3_storage_self_test(
+    const wchar_t* localFolder, uint8_t* beforeOut, uint8_t* afterOut);
+extern "C" bool bluewake_cp3_module_self_test(void);
 
 namespace BlueWakeUWP
 {
@@ -116,7 +119,7 @@ namespace BlueWakeUWP
             }
         }
 
-        void Render(bool aHeld, bool runtimeOk)
+        void Render(bool aHeld, bool runtimeOk, bool storageOk, bool moduleOk)
         {
             ThrowIfFailed(m_allocators[m_frameIndex]->Reset());
             ThrowIfFailed(m_commandList->Reset(m_allocators[m_frameIndex].Get(), nullptr));
@@ -133,9 +136,20 @@ namespace BlueWakeUWP
             rtv.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvIncrement;
 
             const float pass[4] = { 0.025f, 0.055f, 0.095f, 1.0f };
-            const float fail[4] = { 0.30f, 0.015f, 0.015f, 1.0f };
+            const float runtimeFail[4] = { 0.30f, 0.015f, 0.015f, 1.0f };
+            const float storageFail[4] = { 0.35f, 0.10f, 0.01f, 1.0f };
+            const float moduleFail[4] = { 0.24f, 0.02f, 0.28f, 1.0f };
             const float active[4] = { 0.035f, 0.30f, 0.10f, 1.0f };
-            const float* clear = aHeld ? active : (runtimeOk ? pass : fail);
+
+            const float* clear = pass;
+            if (!runtimeOk)
+                clear = runtimeFail;
+            else if (!storageOk)
+                clear = storageFail;
+            else if (!moduleOk)
+                clear = moduleFail;
+            if (aHeld)
+                clear = active;
             m_commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
             m_commandList->ClearRenderTargetView(rtv, clear, 0, nullptr);
 
@@ -211,6 +225,36 @@ namespace BlueWakeUWP
 
             m_runtimeOk = bluewake_cp2_runtime_self_test();
             values->Insert("CP2RuntimeProbe", PropertyValue::CreateBoolean(m_runtimeOk));
+
+            uint8_t before = 0u;
+            uint8_t after = 0u;
+            auto localFolder = ApplicationData::Current->LocalFolder;
+            m_storageOk = bluewake_cp3_storage_self_test(
+                localFolder->Path->Data(), &before, &after);
+
+            auto expectedValue = values->Lookup("CP3ExpectedSramMarker");
+            if (expectedValue != nullptr)
+            {
+                auto expected = dynamic_cast<IPropertyValue^>(expectedValue);
+                if (expected == nullptr ||
+                    expected->Type != PropertyType::Int32 ||
+                    (uint8_t)expected->GetInt32() != before)
+                {
+                    m_storageOk = false;
+                }
+            }
+
+            values->Insert(
+                "CP3ExpectedSramMarker",
+                PropertyValue::CreateInt32((int)after));
+            values->Insert(
+                "CP3StorageProbe",
+                PropertyValue::CreateBoolean(m_storageOk));
+
+            m_moduleOk = bluewake_cp3_module_self_test();
+            values->Insert(
+                "CP3ModuleProbe",
+                PropertyValue::CreateBoolean(m_moduleOk));
         }
 
         virtual void SetWindow(CoreWindow^ window)
@@ -234,7 +278,8 @@ namespace BlueWakeUWP
                 if (m_visible)
                 {
                     window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
-                    m_renderer.Render(IsGamepadAHeld(), m_runtimeOk);
+                    m_renderer.Render(
+                        IsGamepadAHeld(), m_runtimeOk, m_storageOk, m_moduleOk);
                 }
                 else
                 {
@@ -278,6 +323,8 @@ namespace BlueWakeUWP
         bool m_closed = false;
         bool m_visible = true;
         bool m_runtimeOk = false;
+        bool m_storageOk = false;
+        bool m_moduleOk = false;
         D3D12Probe m_renderer;
     };
 
