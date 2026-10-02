@@ -69,14 +69,12 @@ jobs:
           # real WINUWP DXGI/D3D12 paths, but make this advisory probe inert.
           $platformFunctions = Join-Path $src "src\dawn\native\d3d\PlatformFunctions.cpp"
           $text = Get-Content $platformFunctions -Raw
-          $open = "void PlatformFunctions::InitWindowsVersion() {`r`n"
-          $openReplacement = "void PlatformFunctions::InitWindowsVersion() {`r`n#if DAWN_PLATFORM_IS(WINUWP)`r`n    mCurrentBuildNumber = 0;`r`n    return;`r`n#else`r`n"
-          if (-not $text.Contains($open)) { throw "Dawn InitWindowsVersion opening context not found" }
-          $text = $text.Replace($open, $openReplacement)
-          $close = "    RegCloseKey(hKey);`r`n}"
-          $closeReplacement = "    RegCloseKey(hKey);`r`n#endif`r`n}"
-          if (-not $text.Contains($close)) { throw "Dawn InitWindowsVersion closing context not found" }
-          $text = $text.Replace($close, $closeReplacement)
+          $openPattern = 'void PlatformFunctions::InitWindowsVersion\(\) \{\r?\n'
+          if ([regex]::Matches($text, $openPattern).Count -ne 1) { throw "Dawn InitWindowsVersion opening context not unique" }
+          $text = [regex]::Replace($text, $openPattern, "void PlatformFunctions::InitWindowsVersion() {`n#if DAWN_PLATFORM_IS(WINUWP)`n    mCurrentBuildNumber = 0;`n    return;`n#else`n", 1)
+          $closePattern = '    RegCloseKey\(hKey\);\r?\n\}'
+          if ([regex]::Matches($text, $closePattern).Count -ne 1) { throw "Dawn InitWindowsVersion closing context not unique" }
+          $text = [regex]::Replace($text, $closePattern, "    RegCloseKey(hKey);`n#endif`n}", 1)
           Set-Content -Path $platformFunctions -Value $text -NoNewline
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
