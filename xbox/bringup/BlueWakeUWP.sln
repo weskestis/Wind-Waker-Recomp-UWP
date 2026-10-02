@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BlueWakeUWP", "BlueWakeUWP.vcxproj", "{7EC02B71-3173-4BCB-97EA-7D508FC49221}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CP3Module", "CP3Module.vcxproj", "{92D42C91-7B61-4C70-9722-390078B1F1E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -14,5 +16,9 @@ Global
 		{7EC02B71-3173-4BCB-97EA-7D508FC49221}.Debug|x64.Build.0 = Debug|x64
 		{7EC02B71-3173-4BCB-97EA-7D508FC49221}.Release|x64.ActiveCfg = Release|x64
 		{7EC02B71-3173-4BCB-97EA-7D508FC49221}.Release|x64.Build.0 = Release|x64
+		{92D42C91-7B61-4C70-9722-390078B1F1E7}.Debug|x64.ActiveCfg = Debug|x64
+		{92D42C91-7B61-4C70-9722-390078B1F1E7}.Debug|x64.Build.0 = Debug|x64
+		{92D42C91-7B61-4C70-9722-390078B1F1E7}.Release|x64.ActiveCfg = Release|x64
+		{92D42C91-7B61-4C70-9722-390078B1F1E7}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal
