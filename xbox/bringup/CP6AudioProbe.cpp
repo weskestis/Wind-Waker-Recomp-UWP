@@ -4,7 +4,10 @@
 #include <cmath>
 #include <vector>
 
-extern "C" bool bluewake_cp6_audio_self_test(void)
+extern "C" bool bluewake_cp6_audio_self_test(
+    const wchar_t* deviceId,
+    uint32_t* masteringChannelsOut,
+    uint32_t* masteringRateOut)
 {
     static IXAudio2* s_engine = nullptr;
     static IXAudio2MasteringVoice* s_master = nullptr;
@@ -18,18 +21,32 @@ extern "C" bool bluewake_cp6_audio_self_test(void)
     if (FAILED(hr) || s_engine == nullptr)
         return false;
 
+    if (deviceId == nullptr || deviceId[0] == L'\0')
+        return false;
+
     hr = s_engine->CreateMasteringVoice(
         &s_master,
-        XAUDIO2_DEFAULT_CHANNELS,
-        XAUDIO2_DEFAULT_SAMPLERATE,
+        2,
+        48000,
         0,
-        nullptr,
+        deviceId,
         nullptr,
         AudioCategory_GameMedia);
     if (FAILED(hr) || s_master == nullptr)
         return false;
 
-    constexpr uint32_t sampleRate = 32000;
+    XAUDIO2_VOICE_DETAILS masteringDetails{};
+    s_master->GetVoiceDetails(&masteringDetails);
+    if (masteringChannelsOut != nullptr)
+        *masteringChannelsOut = masteringDetails.InputChannels;
+    if (masteringRateOut != nullptr)
+        *masteringRateOut = masteringDetails.InputSampleRate;
+
+    if (masteringDetails.InputChannels == 0u ||
+        masteringDetails.InputSampleRate == 0u)
+        return false;
+
+    constexpr uint32_t sampleRate = 48000;
     constexpr uint32_t frames = sampleRate * 2u;
     WAVEFORMATEX format{};
     format.wFormatTag = WAVE_FORMAT_PCM;
