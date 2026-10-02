@@ -1,8 +1,8 @@
-name: CP5 Xbox Full GXRuntime Chassis
+name: CP6 Xbox Dawn CoreWindow and XAudio2
 
 on:
   push:
-    branches: [ cp5-chassis ]
+    branches: [ cp6-graphics-audio ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   build-x64-uwp:
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout Xbox port
@@ -30,9 +30,7 @@ jobs:
           git -C upstream remote add origin https://github.com/elliotttate/Wind-Waker-Recomp.git
           git -C upstream fetch --depth=1 origin $expected
           $actual = (git -C upstream rev-parse FETCH_HEAD).Trim()
-          if ($actual -ne $expected) {
-            throw "Upstream pin mismatch: expected $expected, got $actual"
-          }
+          if ($actual -ne $expected) { throw "Upstream pin mismatch: expected $expected, got $actual" }
           git -C upstream checkout --detach FETCH_HEAD
           "UPSTREAM_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -45,20 +43,48 @@ jobs:
           git -C deps\recompcore remote add origin https://github.com/elliotttate/RecompCore.git
           git -C deps\recompcore fetch --depth=1 origin $expected
           $actual = (git -C deps\recompcore rev-parse FETCH_HEAD).Trim()
-          if ($actual -ne $expected) {
-            throw "RecompCore pin mismatch: expected $expected, got $actual"
-          }
+          if ($actual -ne $expected) { throw "RecompCore pin mismatch: expected $expected, got $actual" }
           git -C deps\recompcore checkout --detach FETCH_HEAD
           "RECOMPCORE_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Fetch pinned Dawn runtime
+        shell: pwsh
+        run: |
+          $url = "https://github.com/encounter/dawn/releases/download/v20260618.032059/dawn-windows-amd64.tar.gz"
+          $expected = "d26d3107142c5a123d2102979c7403308668038372616fbd33a537e45c22f0dc"
+          $archive = Join-Path $env:RUNNER_TEMP "dawn-windows-amd64.tar.gz"
+          $root = Join-Path $env:GITHUB_WORKSPACE "deps\dawn"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile $archive
+          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Dawn package hash mismatch: expected $expected, got $actual" }
+          tar -xf $archive -C $root
+
+          $header = Get-ChildItem $root -Recurse -Filter webgpu_cpp.h | Select-Object -First 1
+          $lib = Get-ChildItem $root -Recurse -Filter webgpu_dawn.lib | Select-Object -First 1
+          $dll = Get-ChildItem $root -Recurse -Filter webgpu_dawn.dll | Select-Object -First 1
+          $dxc = Get-ChildItem $root -Recurse -Filter dxcompiler.dll | Select-Object -First 1
+          $dxil = Get-ChildItem $root -Recurse -Filter dxil.dll | Select-Object -First 1
+          if ($null -eq $header -or $null -eq $lib -or $null -eq $dll -or $null -eq $dxc -or $null -eq $dxil) {
+            throw "Pinned Dawn package is missing headers, import lib, or runtime DLLs"
+          }
+
+          $includeDir = $header.Directory.Parent.FullName
+          Copy-Item $dll.FullName "$env:GITHUB_WORKSPACE\xbox\bringup\webgpu_dawn.dll" -Force
+          Copy-Item $dxc.FullName "$env:GITHUB_WORKSPACE\xbox\bringup\dxcompiler.dll" -Force
+          Copy-Item $dxil.FullName "$env:GITHUB_WORKSPACE\xbox\bringup\dxil.dll" -Force
+          "DAWN_INCLUDE=$includeDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "DAWN_LIB=$($lib.Directory.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Dawn include: $includeDir"
+          Write-Host "Dawn lib: $($lib.FullName)"
 
       - name: Report UWP toolchain
         shell: pwsh
         run: |
           msbuild -version
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory |
-            Select-Object -ExpandProperty Name
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory | Select-Object -ExpandProperty Name
 
-      - name: Generate neutral CP5 package assets
+      - name: Generate neutral CP6 package assets
         shell: pwsh
         run: |
           $assetDir = Join-Path $env:GITHUB_WORKSPACE "xbox\bringup\Assets"
@@ -71,7 +97,7 @@ jobs:
           Write-Png "Square44x44Logo.png" "iVBORw0KGgoAAAANSUhEUgAAACwAAAAsCAYAAAAehFoBAAAAQElEQVR42u3OQREAIAgAMOTD1wD2rwk58LYEO3VfxyIZywgLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwv/Fx60BAGK5DGV9QAAAABJRU5ErkJggg=="
           Write-Png "SplashScreen.png" "iVBORw0KGgoAAAANSUhEUgAAAmwAAAEsCAYAAAB+Je/UAAAEk0lEQVR42u3WIQEAMAgAwTEzuwD0rwklEIi7CK8+3s86AACsdSUAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYJAAAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgkAAAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2CQAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwBgQgNUngOKD5Jj4wAAAABJRU5ErkJggg=="
 
-      - name: Generate ephemeral CP5 signing certificate
+      - name: Generate ephemeral CP6 signing certificate
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\artifacts" | Out-Null
@@ -80,25 +106,27 @@ jobs:
             -Subject "CN=WindWakerRecompUWP" `
             -KeyUsage DigitalSignature `
             -KeyExportPolicy Exportable `
-            -FriendlyName "Wind Waker Recomp UWP CP5" `
+            -FriendlyName "Wind Waker Recomp UWP CP6" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
-          $password = ConvertTo-SecureString -String "cp5-temporary" -Force -AsPlainText
-          $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP5.pfx"
+          $password = ConvertTo-SecureString -String "cp6-temporary" -Force -AsPlainText
+          $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP6.pfx"
           Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $password | Out-Null
-          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\artifacts\WindWakerRecompUWP-CP5.cer" | Out-Null
-          "CP5_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\artifacts\WindWakerRecompUWP-CP6.cer" | Out-Null
+          "CP6_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Build x64 UWP CP5
+      - name: Build x64 UWP CP6
         shell: pwsh
         run: |
           msbuild xbox\bringup\BlueWakeUWP.sln `
             /m `
             /p:Configuration=Release `
             /p:Platform=x64 `
+            /p:DawnIncludeDir="$env:DAWN_INCLUDE" `
+            /p:DawnLibDir="$env:DAWN_LIB" `
             /p:AppxPackageSigningEnabled=true `
-            /p:PackageCertificateKeyFile="$env:CP5_PFX" `
-            /p:PackageCertificatePassword="cp5-temporary" `
+            /p:PackageCertificateKeyFile="$env:CP6_PFX" `
+            /p:PackageCertificatePassword="cp6-temporary" `
             /p:PackageCertificateThumbprint="" `
             /p:GenerateAppxPackageOnBuild=true `
             /p:UapAppxPackageBuildMode=SideloadOnly `
@@ -109,14 +137,8 @@ jobs:
         shell: pwsh
         run: |
           $runtime = "$env:GITHUB_WORKSPACE\xbox\bringup\CP5Runtime.lib"
-          if (-not (Test-Path $runtime)) {
-            throw "CP5Runtime.lib was not produced"
-          }
-          $size = (Get-Item $runtime).Length
-          if ($size -lt 100000) {
-            throw "CP5Runtime.lib is unexpectedly small: $size bytes"
-          }
-          Write-Host "full GXRuntime static chassis built: $size bytes"
+          if (-not (Test-Path $runtime)) { throw "CP5Runtime.lib was not produced" }
+          if ((Get-Item $runtime).Length -lt 100000) { throw "CP5Runtime.lib is unexpectedly small" }
 
       - name: Verify production module exports
         shell: pwsh
@@ -124,53 +146,46 @@ jobs:
           $module = "$env:GITHUB_WORKSPACE\xbox\bringup\gGZLE01_recomp.dll"
           if (-not (Test-Path $module)) { throw "gGZLE01_recomp.dll was not produced" }
           $dumpbin = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
-            Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe$' } |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
+            Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1
           if ($null -eq $dumpbin) { throw "Visual Studio x64 dumpbin.exe not found" }
           $exports = (& $dumpbin.FullName /nologo /exports $module | Out-String)
           @(
-            "staticrecomp_get_module",
-            "bluewake_composite_guest_cpu",
-            "bluewake_composite_guest_mem1",
-            "bluewake_set_mem_write_journal",
-            "bluewake_set_edge_service",
-            "ppc_set_mem_write_journal",
-            "ppc_guest_alias_clear",
-            "ppc_guest_alias_add_shared",
-            "ppc_guest_alias_get_storage",
-            "ppc_guest_alias_remove",
-            "ppc_guest_alias_resolve"
-          ) | ForEach-Object {
-            if ($exports -notmatch [regex]::Escape($_)) { throw "required module export missing: $_" }
-          }
-          Write-Host "production module export contract verified"
+            "staticrecomp_get_module", "bluewake_composite_guest_cpu", "bluewake_composite_guest_mem1",
+            "bluewake_set_mem_write_journal", "bluewake_set_edge_service", "ppc_set_mem_write_journal",
+            "ppc_guest_alias_clear", "ppc_guest_alias_add_shared", "ppc_guest_alias_get_storage",
+            "ppc_guest_alias_remove", "ppc_guest_alias_resolve"
+          ) | ForEach-Object { if ($exports -notmatch [regex]::Escape($_)) { throw "required module export missing: $_" } }
 
-      - name: Verify CP5 modules are inside MSIX
+      - name: Verify CP6 imports and modules
         shell: pwsh
         run: |
-          $package = "$env:GITHUB_WORKSPACE\artifacts\AppPackages\BlueWakeUWP_0.5.0.0_x64_Test\BlueWakeUWP_0.5.0.0_x64.msix"
-          $unpack = Join-Path $env:RUNNER_TEMP "cp5-unpack"
+          $dumpbin = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
+            Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1
+          $exe = "$env:GITHUB_WORKSPACE\xbox\bringup\x64\Release\BlueWakeUWP\BlueWakeUWP.exe"
+          $imports = (& $dumpbin.FullName /nologo /imports $exe | Out-String)
+          if ($imports -notmatch 'webgpu_dawn\.dll') { throw "BlueWakeUWP.exe does not import webgpu_dawn.dll" }
+          if ($imports -notmatch 'xaudio2_9\.dll') { throw "BlueWakeUWP.exe does not import xaudio2_9.dll" }
+
+          $package = "$env:GITHUB_WORKSPACE\artifacts\AppPackages\BlueWakeUWP_0.6.0.0_x64_Test\BlueWakeUWP_0.6.0.0_x64.msix"
+          $unpack = Join-Path $env:RUNNER_TEMP "cp6-unpack"
           & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" unpack /p $package /d $unpack /o
-          foreach ($name in @("CP3Module.dll", "gGZLE01_recomp.dll")) {
+          foreach ($name in @("CP3Module.dll", "gGZLE01_recomp.dll", "webgpu_dawn.dll", "dxcompiler.dll", "dxil.dll")) {
             if (-not (Test-Path (Join-Path $unpack $name))) { throw "$name is missing from the package" }
           }
-          Write-Host "CP5 packaged module contract verified"
+          Write-Host "CP6 Dawn/XAudio2 package contract verified"
 
       - name: Inventory build output
         if: always()
         shell: pwsh
         run: |
           if (Test-Path artifacts) { Get-ChildItem artifacts -Recurse | Select-Object FullName, Length }
-          if (Test-Path xbox\bringup\x64\Release) {
-            Get-ChildItem xbox\bringup\x64\Release -Recurse | Select-Object FullName, Length
-          }
+          if (Test-Path xbox\bringup\x64\Release) { Get-ChildItem xbox\bringup\x64\Release -Recurse | Select-Object FullName, Length }
 
-      - name: Upload CP5 build
+      - name: Upload CP6 build
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Wind-Waker-Recomp-UWP-CP5-x64
+          name: Wind-Waker-Recomp-UWP-CP6-x64
           if-no-files-found: error
           path: |
             artifacts/**
