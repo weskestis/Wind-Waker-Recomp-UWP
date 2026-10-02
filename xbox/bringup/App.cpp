@@ -17,6 +17,7 @@ extern "C" bool bluewake_cp2_runtime_self_test(void);
 extern "C" bool bluewake_cp3_storage_self_test(
     const wchar_t* localFolder, uint8_t* beforeOut, uint8_t* afterOut);
 extern "C" bool bluewake_cp3_module_self_test(void);
+extern "C" bool bluewake_cp4_real_module_self_test(void);
 
 namespace BlueWakeUWP
 {
@@ -119,7 +120,7 @@ namespace BlueWakeUWP
             }
         }
 
-        void Render(bool aHeld, bool runtimeOk, bool storageOk, bool moduleOk)
+        void Render(bool aHeld, bool runtimeOk, bool storageOk, bool moduleOk, bool realModuleOk)
         {
             ThrowIfFailed(m_allocators[m_frameIndex]->Reset());
             ThrowIfFailed(m_commandList->Reset(m_allocators[m_frameIndex].Get(), nullptr));
@@ -139,6 +140,7 @@ namespace BlueWakeUWP
             const float runtimeFail[4] = { 0.30f, 0.015f, 0.015f, 1.0f };
             const float storageFail[4] = { 0.35f, 0.10f, 0.01f, 1.0f };
             const float moduleFail[4] = { 0.24f, 0.02f, 0.28f, 1.0f };
+            const float realModuleFail[4] = { 0.34f, 0.28f, 0.01f, 1.0f };
             const float active[4] = { 0.035f, 0.30f, 0.10f, 1.0f };
 
             const float* clear = pass;
@@ -148,6 +150,8 @@ namespace BlueWakeUWP
                 clear = storageFail;
             else if (!moduleOk)
                 clear = moduleFail;
+            else if (!realModuleOk)
+                clear = realModuleFail;
             if (aHeld)
                 clear = active;
             m_commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
@@ -255,6 +259,11 @@ namespace BlueWakeUWP
             values->Insert(
                 "CP3ModuleProbe",
                 PropertyValue::CreateBoolean(m_moduleOk));
+
+            m_realModuleOk = bluewake_cp4_real_module_self_test();
+            values->Insert(
+                "CP4RealModuleProbe",
+                PropertyValue::CreateBoolean(m_realModuleOk));
         }
 
         virtual void SetWindow(CoreWindow^ window)
@@ -279,7 +288,8 @@ namespace BlueWakeUWP
                 {
                     window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
                     m_renderer.Render(
-                        IsGamepadAHeld(), m_runtimeOk, m_storageOk, m_moduleOk);
+                        IsGamepadAHeld(), m_runtimeOk, m_storageOk,
+                        m_moduleOk, m_realModuleOk);
                 }
                 else
                 {
@@ -325,6 +335,7 @@ namespace BlueWakeUWP
         bool m_runtimeOk = false;
         bool m_storageOk = false;
         bool m_moduleOk = false;
+        bool m_realModuleOk = false;
         D3D12Probe m_renderer;
     };
 
