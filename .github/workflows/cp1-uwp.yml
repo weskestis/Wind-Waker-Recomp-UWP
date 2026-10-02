@@ -1,0 +1,95 @@
+name: CP1 Xbox UWP Bring-up
+
+on:
+  push:
+    branches: [ xbox-uwp ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-x64-uwp:
+    runs-on: windows-2022
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Xbox port
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Verify pinned Wind Waker Recomp upstream
+        shell: pwsh
+        run: |
+          $expected = "6def7cd4dcd792ba0b4d25ba9883f96debc8f1b3"
+          git init upstream
+          git -C upstream remote add origin https://github.com/elliotttate/Wind-Waker-Recomp.git
+          git -C upstream fetch --depth=1 origin $expected
+          $actual = (git -C upstream rev-parse FETCH_HEAD).Trim()
+          if ($actual -ne $expected) {
+            throw "Upstream pin mismatch: expected $expected, got $actual"
+          }
+          "UPSTREAM_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Report UWP toolchain
+        shell: pwsh
+        run: |
+          Write-Host "MSBuild:"
+          msbuild -version
+          Write-Host "Installed Windows SDKs:"
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory |
+            Select-Object -ExpandProperty Name
+
+      - name: Generate neutral CP1 package assets
+        shell: pwsh
+        run: |
+          $assetDir = Join-Path $env:GITHUB_WORKSPACE "xbox\bringup\Assets"
+          New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
+          $png = [Convert]::FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+          )
+          @(
+            "StoreLogo.png",
+            "Square150x150Logo.png",
+            "Square44x44Logo.png",
+            "SplashScreen.png"
+          ) | ForEach-Object {
+            [IO.File]::WriteAllBytes((Join-Path $assetDir $_), $png)
+          }
+
+      - name: Build x64 UWP CP1
+        shell: pwsh
+        run: |
+          msbuild xbox\bringup\BlueWakeUWP.sln `
+            /m `
+            /p:Configuration=Release `
+            /p:Platform=x64 `
+            /p:AppxPackageSigningEnabled=false `
+            /p:GenerateAppxPackageOnBuild=true `
+            /p:UapAppxPackageBuildMode=SideloadOnly `
+            /p:AppxBundle=Never `
+            /p:AppxPackageDir="$env:GITHUB_WORKSPACE\artifacts\AppPackages\"
+
+      - name: Inventory build output
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path artifacts) {
+            Get-ChildItem artifacts -Recurse | Select-Object FullName, Length
+          }
+          if (Test-Path xbox\bringup\x64\Release) {
+            Get-ChildItem xbox\bringup\x64\Release -Recurse |
+              Select-Object FullName, Length
+          }
+
+      - name: Upload CP1 build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wind-Waker-Recomp-UWP-CP1-x64
+          if-no-files-found: error
+          path: |
+            artifacts/**
+            xbox/bringup/x64/Release/**
