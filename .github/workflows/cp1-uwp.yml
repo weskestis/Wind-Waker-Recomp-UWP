@@ -146,7 +146,7 @@ jobs:
           }
           Write-Host "production module export contract verified"
 
-      - name: Verify CP6.1 package and XAudio2 import
+      - name: Verify CP6.1 package
         shell: pwsh
         run: |
           $package = "$env:GITHUB_WORKSPACE\artifacts\AppPackages\BlueWakeUWP_0.6.1.0_x64_Test\BlueWakeUWP_0.6.1.0_x64.msix"
@@ -162,8 +162,6 @@ jobs:
         run: |
           $dumpbin = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
             Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe
-        shell: pwsh
-        run: |
           if (Test-Path artifacts) { Get-ChildItem artifacts -Recurse | Select-Object FullName, Length }
           if (Test-Path xbox\bringup\x64\Release) {
             Get-ChildItem xbox\bringup\x64\Release -Recurse | Select-Object FullName, Length
@@ -181,7 +179,9 @@ jobs:
  } |
             Sort-Object FullName -Descending |
             Select-Object -First 1
-          if ($null -eq $dumpbin) { throw "Visual Studio x64 dumpbin.exe not found" }
+          if ($null -eq $dumpbin) {
+            throw "Visual Studio x64 dumpbin.exe not found"
+          }
 
           $exe = "$env:GITHUB_WORKSPACE\xbox\bringup\x64\Release\BlueWakeUWP\BlueWakeUWP.exe"
           $imports = (& $dumpbin.FullName /nologo /imports $exe | Out-String)
