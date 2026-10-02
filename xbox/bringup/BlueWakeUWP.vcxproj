@@ -84,6 +84,10 @@
     <ClCompile Include="CP3Probe.cpp" />
     <ClCompile Include="CP4Probe.cpp" />
     <ClCompile Include="CP5Probe.cpp" />
+    <ClCompile Include="CP6AudioProbe.cpp">
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
     <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
       <Link>Upstream\cycle_domain.c</Link>
       <CompileAs>CompileAsCpp</CompileAs>
