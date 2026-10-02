@@ -1,0 +1,4 @@
+UPSTREAM_REPO=https://github.com/elliotttate/Wind-Waker-Recomp.git
+UPSTREAM_BRANCH=windows-release
+UPSTREAM_COMMIT=6def7cd4dcd792ba0b4d25ba9883f96debc8f1b3
+UPSTREAM_RELEASE=v0.3.0
