@@ -1,13 +1,11 @@
 #include <stdint.h>
 #include <string.h>
 
-extern "C" {
 #include "cycle_domain.h"
 #include "ipl_sram.h"
 #include "pad_event_schedule.h"
 #include "pad_wire.h"
 #include "rel_scratch_allocator.h"
-}
 
 extern "C" bool bluewake_cp2_runtime_self_test(void)
 {
