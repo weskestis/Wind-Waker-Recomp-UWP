@@ -275,7 +275,6 @@ namespace BlueWakeUWP
             m_visible = args->Visible;
         }
 
-        CoreWindow^ m_window = nullptr;
         bool m_closed = false;
         bool m_visible = true;
         bool m_runtimeOk = false;
