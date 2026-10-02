@@ -59,6 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\upstream\runtime\host\src;$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -79,6 +80,22 @@
 
   <ItemGroup>
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="RuntimeProbe.cpp" />
+    <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
+      <Link>Upstream\cycle_domain.c</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\ipl_sram.c">
+      <Link>Upstream\ipl_sram.c</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\pad_event_schedule.c">
+      <Link>Upstream\pad_event_schedule.c</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\pad_wire.c">
+      <Link>Upstream\pad_wire.c</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\upstream\runtime\host\src\rel_scratch_allocator.c">
+      <Link>Upstream\rel_scratch_allocator.c</Link>
+    </ClCompile>
   </ItemGroup>
 
   <ItemGroup>
