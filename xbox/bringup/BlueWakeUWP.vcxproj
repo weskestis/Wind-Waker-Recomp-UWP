@@ -83,6 +83,7 @@
     <ClCompile Include="RuntimeProbe.cpp" />
     <ClCompile Include="CP3Probe.cpp" />
     <ClCompile Include="CP4Probe.cpp" />
+    <ClCompile Include="CP5Probe.cpp" />
     <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
       <Link>Upstream\cycle_domain.c</Link>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -126,6 +127,11 @@
       <Project>{2F16A51D-3B67-492D-A9FD-F68F93FB3C7A}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+    <ProjectReference Include="CP5Runtime.vcxproj">
+      <Project>{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
 
