@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A19338BB-8A77-4B45-90E2-4B7D7243B7B0}</ProjectGuid>
+    <ProjectName>CP5Runtime</ProjectName>
+    <RootNamespace>CP5Runtime</RootNamespace>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
+    <AppContainerApplication>true</AppContainerApplication>
+    <ApplicationType>Windows Store</ApplicationType>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.17763.0</WindowsTargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <PropertyGroup>
+    <TargetName>CP5Runtime</TargetName>
+    <OutDir>$(ProjectDir)</OutDir>
+    <IntDir>$(ProjectDir)CP5Runtime\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(ProjectDir)CP4MsvcCompat.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_exception.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_table.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_float.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_integer.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\loader.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\boot.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\aram.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\dvd.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\event_clock.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\guest_memory.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\guest_memory_dirty.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\gx_recomp.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\gx_recomp_parser.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\interrupts.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\si.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\exi.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\di.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\mmio_bus.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\platform.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\audio_dma.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\audio_adpcm.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\audio_voice.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\audio_event.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\vi_clock.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\memory_card.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\headless_backend.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\savestate.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\hle\hle_abi.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\hle\hle_core.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\hle\hle_card.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\hle\hle_dvd.c" />
+    <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\hle\hle_input.c" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
