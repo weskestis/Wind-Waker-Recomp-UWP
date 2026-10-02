@@ -48,6 +48,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <CompileAsWinRT>false</CompileAsWinRT>
       <WarningLevel>Level4</WarningLevel>
       <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;$(ProjectDir)..\..\deps\recompcore\Source\Core\Core\PowerPC\StaticRecomp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -71,27 +72,21 @@
   <ItemGroup>
     <ClCompile Include="CP4Module.cpp" />
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu.c</Link>
     </ClCompile>
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_exception.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu_exception.c</Link>
     </ClCompile>
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu_interpreter.c</Link>
     </ClCompile>
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_table.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu_interpreter_table.c</Link>
     </ClCompile>
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_float.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu_interpreter_float.c</Link>
     </ClCompile>
     <ClCompile Include="..\..\deps\recompcore\GXRuntime\src\core\cpu_interpreter_integer.c">
-      <CompileAs>CompileAsCpp</CompileAs>
       <Link>GXRuntime\cpu_interpreter_integer.c</Link>
     </ClCompile>
   </ItemGroup>
