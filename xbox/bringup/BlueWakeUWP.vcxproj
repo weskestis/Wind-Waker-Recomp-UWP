@@ -105,9 +105,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="CP3Module.dll">
+    <None Include="CP3Module.dll">
+      <Link>CP3Module.dll</Link>
       <DeploymentContent>true</DeploymentContent>
-    </Content>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
