@@ -164,7 +164,7 @@ jobs:
           $exe = "$env:GITHUB_WORKSPACE\xbox\bringup\x64\Release\BlueWakeUWP\BlueWakeUWP.exe"
           $imports = (& $dumpbin.FullName /nologo /imports $exe | Out-String)
           if ($imports -notmatch 'webgpu_dawn\.dll') { throw "BlueWakeUWP.exe does not import webgpu_dawn.dll" }
-          if ($imports -notmatch 'xaudio2_9\.dll') { throw "BlueWakeUWP.exe does not import xaudio2_9.dll" }
+          if ($imports -notmatch 'XAudio2Create') { throw "BlueWakeUWP.exe does not import XAudio2Create through WindowsApp.lib" }
 
           $package = "$env:GITHUB_WORKSPACE\artifacts\AppPackages\BlueWakeUWP_0.6.0.0_x64_Test\BlueWakeUWP_0.6.0.0_x64.msix"
           $unpack = Join-Path $env:RUNNER_TEMP "cp6-unpack"
