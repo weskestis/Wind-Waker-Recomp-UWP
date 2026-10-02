@@ -36,7 +36,7 @@ jobs:
           git -C upstream checkout --detach FETCH_HEAD
           "UPSTREAM_OK=$actual" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Fetch pinned RecompCore headers
+      - name: Fetch pinned RecompCore
         shell: pwsh
         run: |
           $expected = "634895470af6e61e601f06a351f3a72888215159"
@@ -54,9 +54,7 @@ jobs:
       - name: Report UWP toolchain
         shell: pwsh
         run: |
-          Write-Host "MSBuild:"
           msbuild -version
-          Write-Host "Installed Windows SDKs:"
           Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory |
             Select-Object -ExpandProperty Name
 
@@ -65,14 +63,9 @@ jobs:
         run: |
           $assetDir = Join-Path $env:GITHUB_WORKSPACE "xbox\bringup\Assets"
           New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
-
           function Write-Png([string]$name, [string]$base64) {
-            [IO.File]::WriteAllBytes(
-              (Join-Path $assetDir $name),
-              [Convert]::FromBase64String($base64)
-            )
+            [IO.File]::WriteAllBytes((Join-Path $assetDir $name), [Convert]::FromBase64String($base64))
           }
-
           Write-Png "StoreLogo.png" "iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAASUlEQVR42u3PMQ0AMAgAMMazdwLm3ya44CCtg577fsUCGUuIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIzGi9vQGWhr7RGgAAAABJRU5ErkJggg=="
           Write-Png "Square150x150Logo.png" "iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAABIklEQVR42u3SMREAMAgAsdKlawXg3yYYYGRMJPx9vJ91YNmVAGNhLIwFxsJYGAuMhbEwFhgLY2EsMBbGwlhgLIyFscBYGAtjgbEwFsYCY2EsjAXGwlgYC4yFsTAWGAtjYSwwFsbCWGAsjIWxwFgYC2OBsTAWxgJjYSyMBcbCWBgLjIWxMBYYC2NhLDAWxsJYYCyMhbHAWBgLY4GxMBbGAmNhLIwFxsJYGAuMhbEwFhgLY2EsMBbGwlgYC4yFsTAWGAtjYSwwFsbCWGAsjIWxwFgYC2OBsTAWxgJjYSyMBcbCWBgLjIWxMBYYC2NhLDAWxsJYYCyMhbHAWBgLY4GxMBbGAmNhLIwFxsJYGAuMhbEwFhgLY2EsMBbGwlhgLIyFsWDWxCsCXofXeiwAAAAASUVORK5CYII="
           Write-Png "Square44x44Logo.png" "iVBORw0KGgoAAAANSUhEUgAAACwAAAAsCAYAAAAehFoBAAAAQElEQVR42u3OQREAIAgAMOTD1wD2rwk58LYEO3VfxyIZywgLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwv/Fx60BAGK5DGV9QAAAABJRU5ErkJggg=="
@@ -90,7 +83,6 @@ jobs:
             -FriendlyName "Wind Waker Recomp UWP CP4" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
-
           $password = ConvertTo-SecureString -String "cp4-temporary" -Force -AsPlainText
           $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP4.pfx"
           Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $password | Out-Null
@@ -117,71 +109,12 @@ jobs:
         shell: pwsh
         run: |
           $module = "$env:GITHUB_WORKSPACE\xbox\bringup\gGZLE01_recomp.dll"
-          if (-not (Test-Path $module)) {
-            throw "gGZLE01_recomp.dll was not produced"
-          }
-
+          if (-not (Test-Path $module)) { throw "gGZLE01_recomp.dll was not produced" }
           $dumpbin = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe |
-            Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe
-          @(
-            "staticrecomp_get_module",
-            "bluewake_composite_guest_cpu",
-            "bluewake_composite_guest_mem1",
-            "bluewake_set_mem_write_journal",
-            "bluewake_set_edge_service",
-            "ppc_set_mem_write_journal",
-            "ppc_guest_alias_clear",
-            "ppc_guest_alias_add_shared",
-            "ppc_guest_alias_get_storage",
-            "ppc_guest_alias_remove",
-            "ppc_guest_alias_resolve"
-          ) | ForEach-Object {
-            if ($exports -notmatch [regex]::Escape($_)) {
-              throw "required module export missing: $_"
-            }
-          }
-          Write-Host "production module export contract verified"
-
-      - name: Verify CP4 modules are inside MSIX
-        shell: pwsh
-        run: |
-          $package = "$env:GITHUB_WORKSPACE\artifacts\AppPackages\BlueWakeUWP_0.4.0.0_x64_Test\BlueWakeUWP_0.4.0.0_x64.msix"
-          $unpack = Join-Path $env:RUNNER_TEMP "cp4-unpack"
-          & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" unpack /p $package /d $unpack /o
-          foreach ($name in @("CP3Module.dll", "gGZLE01_recomp.dll")) {
-            if (-not (Test-Path (Join-Path $unpack $name))) {
-              throw "$name is missing from the package"
-            }
-          }
-          Write-Host "CP4 packaged module contract verified"
-
-      - name: Inventory build output
-        if: always()
-        shell: pwsh
-        run: |
-          if (Test-Path artifacts) {
-            Get-ChildItem artifacts -Recurse | Select-Object FullName, Length
-          }
-          if (Test-Path xbox\bringup\x64\Release) {
-            Get-ChildItem xbox\bringup\x64\Release -Recurse |
-              Select-Object FullName, Length
-          }
-
-      - name: Upload CP4 build
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Wind-Waker-Recomp-UWP-CP4-x64
-          if-no-files-found: error
-          path: |
-            artifacts/**
-            xbox/bringup/x64/Release/**
- } |
+            Where-Object { $_.FullName -match 'Hostx64\\x64\\dumpbin\.exe$' } |
             Sort-Object FullName -Descending |
             Select-Object -First 1
-          if ($null -eq $dumpbin) {
-            throw "Visual Studio x64 dumpbin.exe not found"
-          }
+          if ($null -eq $dumpbin) { throw "Visual Studio x64 dumpbin.exe not found" }
           $exports = (& $dumpbin.FullName /nologo /exports $module | Out-String)
           @(
             "staticrecomp_get_module",
@@ -196,9 +129,7 @@ jobs:
             "ppc_guest_alias_remove",
             "ppc_guest_alias_resolve"
           ) | ForEach-Object {
-            if ($exports -notmatch [regex]::Escape($_)) {
-              throw "required module export missing: $_"
-            }
+            if ($exports -notmatch [regex]::Escape($_)) { throw "required module export missing: $_" }
           }
           Write-Host "production module export contract verified"
 
@@ -209,9 +140,7 @@ jobs:
           $unpack = Join-Path $env:RUNNER_TEMP "cp4-unpack"
           & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe" unpack /p $package /d $unpack /o
           foreach ($name in @("CP3Module.dll", "gGZLE01_recomp.dll")) {
-            if (-not (Test-Path (Join-Path $unpack $name))) {
-              throw "$name is missing from the package"
-            }
+            if (-not (Test-Path (Join-Path $unpack $name))) { throw "$name is missing from the package" }
           }
           Write-Host "CP4 packaged module contract verified"
 
@@ -219,12 +148,9 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          if (Test-Path artifacts) {
-            Get-ChildItem artifacts -Recurse | Select-Object FullName, Length
-          }
+          if (Test-Path artifacts) { Get-ChildItem artifacts -Recurse | Select-Object FullName, Length }
           if (Test-Path xbox\bringup\x64\Release) {
-            Get-ChildItem xbox\bringup\x64\Release -Recurse |
-              Select-Object FullName, Length
+            Get-ChildItem xbox\bringup\x64\Release -Recurse | Select-Object FullName, Length
           }
 
       - name: Upload CP4 build
