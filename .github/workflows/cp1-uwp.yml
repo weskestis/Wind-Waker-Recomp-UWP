@@ -62,6 +62,25 @@ jobs:
           Write-Png "Square44x44Logo.png" "iVBORw0KGgoAAAANSUhEUgAAACwAAAAsCAYAAAAehFoBAAAAQElEQVR42u3OQREAIAgAMOTD1wD2rwk58LYEO3VfxyIZywgLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwv/Fx60BAGK5DGV9QAAAABJRU5ErkJggg=="
           Write-Png "SplashScreen.png" "iVBORw0KGgoAAAANSUhEUgAAAmwAAAEsCAYAAAB+Je/UAAAEk0lEQVR42u3WIQEAMAgAwTEzuwD0rwklEIi7CK8+3s86AACsdSUAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYJAAAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwCAYQMAwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAABg2AADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAwbAAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgkAAAwbAAAGDYAAMMGAIBhAwDAsAEAGDYAAAwbAIBhAwDAsAEAYNgAAAwbAACGDQAAwwYAYNgAADBsAACGDQAAwwYAgGEDADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAAIYNAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AAAMGwCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAGDYAAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwDAsAEAGDYAAAwbAACGDQDAsAEAYNgAADBsAACGDQAAwwYAYNgAADBsAAAYNgAAwwYAgGEDADBsAAAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAMCwAQBg2AAAMGwAAIYNAADDBgBg2CQAADBsAAAYNgAAwwYAgGEDAMCwAQAYNgAADBsAgGEDAMCwAQBg2AAADBsAAIYNAADDBgBg2AAAMGwAAIYNAADDBgCAYQMAMGwAABg2AADDBgCAYQMAwLABABg2AAAMGwAAhg0AwLABAGDYAAAMGwAAhg0AAMMGAGDYAAAwbAAAhg0AAMMGAIBhAwAwbAAAGDYAAAwbAIBhAwBgQgNUngOKD5Jj4wAAAABJRU5ErkJggg=="
 
+      - name: Generate ephemeral CP1 signing certificate
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\artifacts" | Out-Null
+          $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject "CN=WindWakerRecompUWP" `
+            -KeyUsage DigitalSignature `
+            -KeyExportPolicy Exportable `
+            -FriendlyName "Wind Waker Recomp UWP CP1" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+
+          $password = ConvertTo-SecureString -String "cp1-temporary" -Force -AsPlainText
+          $pfx = Join-Path $env:RUNNER_TEMP "WindWakerRecompUWP-CP1.pfx"
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $password | Out-Null
+          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\artifacts\WindWakerRecompUWP-CP1.cer" | Out-Null
+          "CP1_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build x64 UWP CP1
         shell: pwsh
         run: |
@@ -69,7 +88,10 @@ jobs:
             /m `
             /p:Configuration=Release `
             /p:Platform=x64 `
-            /p:AppxPackageSigningEnabled=false `
+            /p:AppxPackageSigningEnabled=true `
+            /p:PackageCertificateKeyFile="$env:CP1_PFX" `
+            /p:PackageCertificatePassword="cp1-temporary" `
+            /p:PackageCertificateThumbprint="" `
             /p:GenerateAppxPackageOnBuild=true `
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxBundle=Never `
