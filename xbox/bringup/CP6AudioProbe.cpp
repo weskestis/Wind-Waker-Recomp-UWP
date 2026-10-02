@@ -31,7 +31,7 @@ extern "C" bool bluewake_cp6_audio_self_test(
         0,
         deviceId,
         nullptr,
-        AudioCategory_GameMedia);
+        AudioCategory_GameEffects);
     if (FAILED(hr) || s_master == nullptr)
         return false;
 
