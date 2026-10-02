@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WINAPI_FAMILY=WINAPI_FAMILY_APP;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\..\upstream\runtime\host\src;$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\upstream\runtime\host\src;$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;$(ProjectDir)..\..\deps\recompcore\Source\Core\Core\PowerPC\StaticRecomp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -81,6 +81,7 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="RuntimeProbe.cpp" />
+    <ClCompile Include="CP3Probe.cpp" />
     <ClCompile Include="..\..\upstream\runtime\host\src\cycle_domain.c">
       <Link>Upstream\cycle_domain.c</Link>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -101,6 +102,20 @@
       <Link>Upstream\rel_scratch_allocator.c</Link>
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="CP3Module.dll">
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="CP3Module.vcxproj">
+      <Project>{92D42C91-7B61-4C70-9722-390078B1F1E7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
