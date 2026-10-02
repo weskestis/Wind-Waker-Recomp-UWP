@@ -10,6 +10,7 @@ using namespace Windows::ApplicationModel::Activation;
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::Foundation;
 using namespace Windows::Gaming::Input;
+using namespace Windows::Media::Devices;
 using namespace Windows::Storage;
 using namespace Windows::UI::Core;
 
@@ -19,7 +20,10 @@ extern "C" bool bluewake_cp3_storage_self_test(
 extern "C" bool bluewake_cp3_module_self_test(void);
 extern "C" bool bluewake_cp4_real_module_self_test(void);
 extern "C" bool bluewake_cp5_chassis_self_test(void);
-extern "C" bool bluewake_cp6_audio_self_test(void);
+extern "C" bool bluewake_cp6_audio_self_test(
+    const wchar_t* deviceId,
+    uint32_t* masteringChannelsOut,
+    uint32_t* masteringRateOut);
 
 namespace BlueWakeUWP
 {
@@ -293,10 +297,36 @@ namespace BlueWakeUWP
             window->VisibilityChanged += ref new TypedEventHandler<CoreWindow^, VisibilityChangedEventArgs^>(
                 this, &App::OnVisibilityChanged);
 
-            m_audioOk = bluewake_cp6_audio_self_test();
+            auto audioDeviceId =
+                MediaDevice::GetDefaultAudioRenderId(AudioDeviceRole::Default);
+
+            uint32_t masteringChannels = 0u;
+            uint32_t masteringRate = 0u;
+            const wchar_t* deviceId =
+                (audioDeviceId != nullptr && audioDeviceId->Length() != 0u)
+                    ? audioDeviceId->Data()
+                    : nullptr;
+
+            m_audioOk = bluewake_cp6_audio_self_test(
+                deviceId,
+                &masteringChannels,
+                &masteringRate);
+
             auto values = ApplicationData::Current->LocalSettings->Values;
             values->Insert(
-                "CP6AudioOnlyProbe",
+                "CP63AudioDeviceResolved",
+                PropertyValue::CreateBoolean(deviceId != nullptr));
+            values->Insert(
+                "CP63AudioDeviceId",
+                audioDeviceId != nullptr ? audioDeviceId : ref new Platform::String(L""));
+            values->Insert(
+                "CP63MasteringChannels",
+                PropertyValue::CreateInt32((int)masteringChannels));
+            values->Insert(
+                "CP63MasteringRate",
+                PropertyValue::CreateInt32((int)masteringRate));
+            values->Insert(
+                "CP63ExplicitDeviceProbe",
                 PropertyValue::CreateBoolean(m_audioOk));
 
             m_renderer.Initialize(window);
