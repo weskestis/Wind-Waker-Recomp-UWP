@@ -62,7 +62,7 @@
       <AdditionalIncludeDirectories>$(DawnIncludeDir);$(ProjectDir)..\..\upstream\runtime\host\src;$(ProjectDir)..\..\deps\recompcore\GXRuntime\include;$(ProjectDir)..\..\deps\recompcore\Source\Core\Core\PowerPC\StaticRecomp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>webgpu_dawn.lib;xaudio2_9.lib;d3d12.lib;dxgi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>webgpu_dawn.lib;d3d12.lib;dxgi.lib;windowsapp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(DawnLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
