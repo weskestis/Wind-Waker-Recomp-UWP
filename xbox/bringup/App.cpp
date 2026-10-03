@@ -3,13 +3,20 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <stdint.h>
+#include <cmath>
+#include <ppltasks.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Activation;
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::Foundation;
+using namespace Windows::Devices::Enumeration;
 using namespace Windows::Gaming::Input;
+using namespace Windows::Media;
+using namespace Windows::Media::Audio;
+using namespace Windows::Media::Devices;
+using namespace Windows::Media::Render;
 using namespace Windows::Storage;
 using namespace Windows::UI::Core;
 
@@ -19,6 +26,15 @@ extern "C" bool bluewake_cp3_storage_self_test(
 extern "C" bool bluewake_cp3_module_self_test(void);
 extern "C" bool bluewake_cp4_real_module_self_test(void);
 extern "C" bool bluewake_cp5_chassis_self_test(void);
+
+MIDL_INTERFACE("5B0D3235-4DBA-4D44-865E-8F1D0E4FD04D")
+IMemoryBufferByteAccess : public IUnknown
+{
+public:
+    virtual HRESULT STDMETHODCALLTYPE GetBuffer(
+        BYTE** value,
+        UINT32* capacity) = 0;
+};
 
 namespace BlueWakeUWP
 {
@@ -121,7 +137,16 @@ namespace BlueWakeUWP
             }
         }
 
-        void Render(bool aHeld, bool runtimeOk, bool storageOk, bool moduleOk, bool realModuleOk, bool chassisOk)
+        void Render(
+            bool aHeld,
+            bool runtimeOk,
+            bool storageOk,
+            bool moduleOk,
+            bool realModuleOk,
+            bool chassisOk,
+            int audioStage,
+            int priorCrashStage,
+            bool audioFailed)
         {
             ThrowIfFailed(m_allocators[m_frameIndex]->Reset());
             ThrowIfFailed(m_commandList->Reset(m_allocators[m_frameIndex].Get(), nullptr));
@@ -143,6 +168,17 @@ namespace BlueWakeUWP
             const float moduleFail[4] = { 0.24f, 0.02f, 0.28f, 1.0f };
             const float realModuleFail[4] = { 0.34f, 0.28f, 0.01f, 1.0f };
             const float chassisFail[4] = { 0.01f, 0.24f, 0.30f, 1.0f };
+            const float audioFail[4] = { 0.42f, 0.00f, 0.00f, 1.0f };
+            const float stage1[4] = { 0.00f, 0.18f, 0.35f, 1.0f };
+            const float stage2[4] = { 0.18f, 0.02f, 0.30f, 1.0f };
+            const float stage3[4] = { 0.35f, 0.12f, 0.00f, 1.0f };
+            const float stage4[4] = { 0.38f, 0.38f, 0.38f, 1.0f };
+            const float stage5[4] = { 0.00f, 0.28f, 0.18f, 1.0f };
+            const float crash1[4] = { 0.00f, 0.70f, 1.00f, 1.0f };
+            const float crash2[4] = { 0.65f, 0.00f, 0.85f, 1.0f };
+            const float crash3[4] = { 1.00f, 0.35f, 0.00f, 1.0f };
+            const float crash4[4] = { 1.00f, 1.00f, 1.00f, 1.0f };
+            const float crash5[4] = { 0.00f, 1.00f, 0.55f, 1.0f };
             const float active[4] = { 0.035f, 0.30f, 0.10f, 1.0f };
 
             const float* clear = pass;
@@ -156,6 +192,29 @@ namespace BlueWakeUWP
                 clear = realModuleFail;
             else if (!chassisOk)
                 clear = chassisFail;
+            else if (audioFailed)
+                clear = audioFail;
+            else if (priorCrashStage == 1)
+                clear = crash1;
+            else if (priorCrashStage == 2)
+                clear = crash2;
+            else if (priorCrashStage == 3)
+                clear = crash3;
+            else if (priorCrashStage == 4)
+                clear = crash4;
+            else if (priorCrashStage == 5)
+                clear = crash5;
+            else if (audioStage == 1)
+                clear = stage1;
+            else if (audioStage == 2)
+                clear = stage2;
+            else if (audioStage == 3)
+                clear = stage3;
+            else if (audioStage == 4)
+                clear = stage4;
+            else if (audioStage >= 5)
+                clear = stage5;
+
             if (aHeld)
                 clear = active;
             m_commandList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
@@ -273,6 +332,36 @@ namespace BlueWakeUWP
             values->Insert(
                 "CP5ChassisProbe",
                 PropertyValue::CreateBoolean(m_chassisOk));
+
+            int attempt = 0;
+            int completed = 0;
+
+            auto attemptValue = values->Lookup("CP65AudioAttemptStage");
+            if (attemptValue != nullptr)
+            {
+                auto boxed = dynamic_cast<IPropertyValue^>(attemptValue);
+                if (boxed != nullptr && boxed->Type == PropertyType::Int32)
+                    attempt = boxed->GetInt32();
+            }
+
+            auto completedValue = values->Lookup("CP65AudioCompletedStage");
+            if (completedValue != nullptr)
+            {
+                auto boxed = dynamic_cast<IPropertyValue^>(completedValue);
+                if (boxed != nullptr && boxed->Type == PropertyType::Int32)
+                    completed = boxed->GetInt32();
+            }
+
+            if (attempt > completed)
+                m_priorCrashStage = attempt;
+
+            // Every new launch starts from a clean known-good CP5 audio state.
+            values->Insert(
+                "CP65AudioAttemptStage",
+                PropertyValue::CreateInt32(0));
+            values->Insert(
+                "CP65AudioCompletedStage",
+                PropertyValue::CreateInt32(0));
         }
 
         virtual void SetWindow(CoreWindow^ window)
@@ -296,9 +385,16 @@ namespace BlueWakeUWP
                 if (m_visible)
                 {
                     window->Dispatcher->ProcessEvents(CoreProcessEventsOption::ProcessAllIfPresent);
+
+                    const bool bHeld = IsGamepadBHeld();
+                    if (bHeld && !m_bWasHeld && m_priorCrashStage == 0)
+                        AdvanceAudioStage();
+                    m_bWasHeld = bHeld;
+
                     m_renderer.Render(
                         IsGamepadAHeld(), m_runtimeOk, m_storageOk,
-                        m_moduleOk, m_realModuleOk, m_chassisOk);
+                        m_moduleOk, m_realModuleOk, m_chassisOk,
+                        m_audioStage, m_priorCrashStage, m_audioFailed);
                 }
                 else
                 {
@@ -310,6 +406,207 @@ namespace BlueWakeUWP
         virtual void Uninitialize() {}
 
     private:
+        bool IsGamepadBHeld()
+        {
+            auto pads = Gamepad::Gamepads;
+            if (pads == nullptr || pads->Size == 0)
+                return false;
+
+            const auto reading = pads->GetAt(0)->GetCurrentReading();
+            const auto buttons = static_cast<unsigned int>(reading.Buttons);
+            const auto b = static_cast<unsigned int>(GamepadButtons::B);
+            return (buttons & b) != 0;
+        }
+
+        AudioFrame^ CreatePreparedToneFrame()
+        {
+            if (m_audioGraph == nullptr || m_audioFrameInput == nullptr)
+                return nullptr;
+
+            auto encoding = m_audioGraph->EncodingProperties;
+            if (encoding == nullptr ||
+                encoding->SampleRate == 0u ||
+                encoding->ChannelCount == 0u)
+                return nullptr;
+
+            const uint32_t rate = encoding->SampleRate;
+            const uint32_t channels = encoding->ChannelCount;
+            const uint32_t frames = rate * 2u;
+            const uint32_t floatCount = frames * channels;
+            const uint32_t byteCount = floatCount * sizeof(float);
+
+            auto frame = ref new AudioFrame(byteCount);
+            auto buffer = frame->LockBuffer(AudioBufferAccessMode::Write);
+            auto reference = buffer->CreateReference();
+
+            ComPtr<IMemoryBufferByteAccess> byteAccess;
+            ThrowIfFailed(reinterpret_cast<IInspectable*>(reference)
+                ->QueryInterface(IID_PPV_ARGS(&byteAccess)));
+
+            BYTE* bytes = nullptr;
+            UINT32 capacity = 0u;
+            ThrowIfFailed(byteAccess->GetBuffer(&bytes, &capacity));
+            if (bytes == nullptr || capacity < byteCount)
+                return nullptr;
+
+            float* samples = reinterpret_cast<float*>(bytes);
+            constexpr double pi = 3.14159265358979323846;
+            const uint32_t fadeFrames = rate >= 100u ? rate / 100u : 1u;
+
+            for (uint32_t i = 0u; i < frames; ++i)
+            {
+                const bool second = i >= rate;
+                const uint32_t noteFrame = second ? i - rate : i;
+                const double freq = second ? 880.0 : 660.0;
+                double envelope = 1.0;
+                if (noteFrame < fadeFrames)
+                    envelope =
+                        static_cast<double>(noteFrame) /
+                        static_cast<double>(fadeFrames);
+                else if (rate - noteFrame < fadeFrames)
+                    envelope =
+                        static_cast<double>(rate - noteFrame) /
+                        static_cast<double>(fadeFrames);
+
+                const float sample = static_cast<float>(
+                    std::sin(
+                        2.0 * pi * freq *
+                        static_cast<double>(i) /
+                        static_cast<double>(rate)) *
+                    0.55 * envelope);
+
+                for (uint32_t ch = 0u; ch < channels; ++ch)
+                    samples[i * channels + ch] = sample;
+            }
+
+            return frame;
+        }
+
+        bool RunAudioStage(int stage)
+        {
+            try
+            {
+                if (stage == 1)
+                {
+                    auto devices = concurrency::create_task(
+                        DeviceInformation::FindAllAsync(
+                            MediaDevice::GetAudioRenderSelector())).get();
+                    if (devices == nullptr || devices->Size == 0u)
+                        return false;
+
+                    m_audioDevice = devices->GetAt(0);
+                    return m_audioDevice != nullptr;
+                }
+
+                if (stage == 2)
+                {
+                    if (m_audioDevice == nullptr)
+                        return false;
+
+                    auto settings =
+                        ref new AudioGraphSettings(AudioRenderCategory::Media);
+                    settings->QuantumSizeSelectionMode =
+                        QuantumSizeSelectionMode::SystemDefault;
+                    settings->PrimaryRenderDevice = m_audioDevice;
+
+                    auto result = concurrency::create_task(
+                        AudioGraph::CreateAsync(settings)).get();
+                    if (result == nullptr ||
+                        result->Status != AudioGraphCreationStatus::Success ||
+                        result->Graph == nullptr)
+                        return false;
+
+                    m_audioGraph = result->Graph;
+                    return true;
+                }
+
+                if (stage == 3)
+                {
+                    if (m_audioGraph == nullptr)
+                        return false;
+
+                    auto result = concurrency::create_task(
+                        m_audioGraph->CreateDeviceOutputNodeAsync()).get();
+                    if (result == nullptr ||
+                        result->Status !=
+                            AudioDeviceNodeCreationStatus::Success ||
+                        result->DeviceOutputNode == nullptr)
+                        return false;
+
+                    m_audioOutput = result->DeviceOutputNode;
+                    return true;
+                }
+
+                if (stage == 4)
+                {
+                    if (m_audioGraph == nullptr || m_audioOutput == nullptr)
+                        return false;
+
+                    auto encoding = m_audioGraph->EncodingProperties;
+                    if (encoding == nullptr)
+                        return false;
+
+                    m_audioFrameInput =
+                        m_audioGraph->CreateFrameInputNode(encoding);
+                    if (m_audioFrameInput == nullptr)
+                        return false;
+
+                    m_audioFrameInput->AddOutgoingConnection(m_audioOutput);
+                    m_audioFrameInput->Stop();
+
+                    auto frame = CreatePreparedToneFrame();
+                    if (frame == nullptr)
+                        return false;
+
+                    m_audioFrameInput->AddFrame(frame);
+                    return true;
+                }
+
+                if (stage == 5)
+                {
+                    if (m_audioGraph == nullptr || m_audioFrameInput == nullptr)
+                        return false;
+
+                    m_audioGraph->Start();
+                    m_audioFrameInput->Start();
+                    return true;
+                }
+            }
+            catch (Platform::Exception^)
+            {
+                return false;
+            }
+
+            return false;
+        }
+
+        void AdvanceAudioStage()
+        {
+            if (m_audioStage >= 5 || m_audioFailed)
+                return;
+
+            const int nextStage = m_audioStage + 1;
+            auto values = ApplicationData::Current->LocalSettings->Values;
+            values->Insert(
+                "CP65AudioAttemptStage",
+                PropertyValue::CreateInt32(nextStage));
+
+            const bool ok = RunAudioStage(nextStage);
+            if (!ok)
+            {
+                m_audioFailed = true;
+                values->Insert(
+                    "CP65AudioFailedStage",
+                    PropertyValue::CreateInt32(nextStage));
+                return;
+            }
+
+            m_audioStage = nextStage;
+            values->Insert(
+                "CP65AudioCompletedStage",
+                PropertyValue::CreateInt32(nextStage));
+        }
+
         bool IsGamepadAHeld()
         {
             auto pads = Gamepad::Gamepads;
@@ -346,6 +643,14 @@ namespace BlueWakeUWP
         bool m_moduleOk = false;
         bool m_realModuleOk = false;
         bool m_chassisOk = false;
+        bool m_bWasHeld = false;
+        bool m_audioFailed = false;
+        int m_audioStage = 0;
+        int m_priorCrashStage = 0;
+        DeviceInformation^ m_audioDevice = nullptr;
+        AudioGraph^ m_audioGraph = nullptr;
+        AudioDeviceOutputNode^ m_audioOutput = nullptr;
+        AudioFrameInputNode^ m_audioFrameInput = nullptr;
         D3D12Probe m_renderer;
     };
 
