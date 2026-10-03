@@ -3,14 +3,21 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <stdint.h>
+#include <cmath>
+#include <ppltasks.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace Windows::ApplicationModel;
 using namespace Windows::ApplicationModel::Activation;
 using namespace Windows::ApplicationModel::Core;
 using namespace Windows::Foundation;
+using namespace Windows::Devices::Enumeration;
 using namespace Windows::Gaming::Input;
+using namespace Windows::Media;
+using namespace Windows::Media::Audio;
 using namespace Windows::Media::Devices;
+using namespace Windows::Media::MediaProperties;
+using namespace Windows::Media::Render;
 using namespace Windows::Storage;
 using namespace Windows::UI::Core;
 
@@ -20,10 +27,15 @@ extern "C" bool bluewake_cp3_storage_self_test(
 extern "C" bool bluewake_cp3_module_self_test(void);
 extern "C" bool bluewake_cp4_real_module_self_test(void);
 extern "C" bool bluewake_cp5_chassis_self_test(void);
-extern "C" bool bluewake_cp6_audio_self_test(
-    const wchar_t* deviceId,
-    uint32_t* masteringChannelsOut,
-    uint32_t* masteringRateOut);
+
+MIDL_INTERFACE("5B0D3235-4DBA-4D44-865E-8F1D0E4FD04D")
+IMemoryBufferByteAccess : public IUnknown
+{
+public:
+    virtual HRESULT STDMETHODCALLTYPE GetBuffer(
+        BYTE** value,
+        UINT32* capacity) = 0;
+};
 
 namespace BlueWakeUWP
 {
@@ -297,37 +309,21 @@ namespace BlueWakeUWP
             window->VisibilityChanged += ref new TypedEventHandler<CoreWindow^, VisibilityChangedEventArgs^>(
                 this, &App::OnVisibilityChanged);
 
-            auto audioDeviceId =
-                MediaDevice::GetDefaultAudioRenderId(AudioDeviceRole::Default);
-
-            uint32_t masteringChannels = 0u;
-            uint32_t masteringRate = 0u;
-            const wchar_t* deviceId =
-                (audioDeviceId != nullptr && audioDeviceId->Length() != 0u)
-                    ? audioDeviceId->Data()
-                    : nullptr;
-
-            m_audioOk = bluewake_cp6_audio_self_test(
-                deviceId,
-                &masteringChannels,
-                &masteringRate);
+            m_audioOk = InitializeAudioGraph();
 
             auto values = ApplicationData::Current->LocalSettings->Values;
             values->Insert(
-                "CP63AudioDeviceResolved",
-                PropertyValue::CreateBoolean(deviceId != nullptr));
-            values->Insert(
-                "CP63AudioDeviceId",
-                audioDeviceId != nullptr ? audioDeviceId : ref new Platform::String(L""));
-            values->Insert(
-                "CP63MasteringChannels",
-                PropertyValue::CreateInt32((int)masteringChannels));
-            values->Insert(
-                "CP63MasteringRate",
-                PropertyValue::CreateInt32((int)masteringRate));
-            values->Insert(
-                "CP63ExplicitDeviceProbe",
+                "CP64AudioGraphProbe",
                 PropertyValue::CreateBoolean(m_audioOk));
+            values->Insert(
+                "CP64AudioGraphSampleRate",
+                PropertyValue::CreateInt32((int)m_audioSampleRate));
+            values->Insert(
+                "CP64AudioGraphChannels",
+                PropertyValue::CreateInt32((int)m_audioChannels));
+            values->Insert(
+                "CP64AudioFramesSubmitted",
+                PropertyValue::CreateInt32((int)m_audioFramesSubmitted));
 
             m_renderer.Initialize(window);
         }
@@ -357,6 +353,183 @@ namespace BlueWakeUWP
         virtual void Uninitialize() {}
 
     private:
+        AudioFrame^ GenerateAudioFrame(uint32_t sampleFrames)
+        {
+            if (sampleFrames == 0u || m_audioChannels == 0u)
+                return nullptr;
+
+            const uint32_t floatCount = sampleFrames * m_audioChannels;
+            const uint32_t bufferSize = floatCount * sizeof(float);
+            auto frame = ref new AudioFrame(bufferSize);
+
+            auto buffer = frame->LockBuffer(AudioBufferAccessMode::Write);
+            auto reference = buffer->CreateReference();
+
+            ComPtr<IMemoryBufferByteAccess> byteAccess;
+            ThrowIfFailed(reinterpret_cast<IInspectable*>(reference)
+                ->QueryInterface(IID_PPV_ARGS(&byteAccess)));
+
+            BYTE* bytes = nullptr;
+            UINT32 capacity = 0u;
+            ThrowIfFailed(byteAccess->GetBuffer(&bytes, &capacity));
+            if (bytes == nullptr || capacity < bufferSize)
+                return nullptr;
+
+            float* samples = reinterpret_cast<float*>(bytes);
+            constexpr double pi = 3.14159265358979323846;
+            const uint64_t firstNoteEnd = (uint64_t)m_audioSampleRate;
+            const uint64_t toneEnd = firstNoteEnd * 2ull;
+            const uint32_t fadeFrames =
+                m_audioSampleRate >= 100u ? m_audioSampleRate / 100u : 1u;
+
+            for (uint32_t frameIndex = 0u; frameIndex < sampleFrames; ++frameIndex)
+            {
+                const uint64_t absoluteFrame =
+                    m_audioFramesGenerated + frameIndex;
+
+                float sample = 0.0f;
+                if (absoluteFrame < toneEnd)
+                {
+                    const double frequency =
+                        absoluteFrame < firstNoteEnd ? 660.0 : 880.0;
+                    const double time =
+                        static_cast<double>(absoluteFrame) /
+                        static_cast<double>(m_audioSampleRate);
+
+                    double envelope = 1.0;
+                    const uint64_t noteOffset =
+                        absoluteFrame < firstNoteEnd
+                            ? absoluteFrame
+                            : absoluteFrame - firstNoteEnd;
+                    const uint64_t noteRemaining =
+                        m_audioSampleRate - noteOffset;
+
+                    if (noteOffset < fadeFrames)
+                        envelope =
+                            static_cast<double>(noteOffset) /
+                            static_cast<double>(fadeFrames);
+                    else if (noteRemaining < fadeFrames)
+                        envelope =
+                            static_cast<double>(noteRemaining) /
+                            static_cast<double>(fadeFrames);
+
+                    sample = static_cast<float>(
+                        std::sin(2.0 * pi * frequency * time) *
+                        0.55 * envelope);
+                }
+
+                for (uint32_t channel = 0u;
+                     channel < m_audioChannels;
+                     ++channel)
+                {
+                    samples[frameIndex * m_audioChannels + channel] =
+                        sample;
+                }
+            }
+
+            m_audioFramesGenerated += sampleFrames;
+            m_audioFramesSubmitted += sampleFrames;
+            return frame;
+        }
+
+        void OnAudioQuantumStarted(
+            AudioFrameInputNode^,
+            FrameInputNodeQuantumStartedEventArgs^ args)
+        {
+            if (!m_audioOk || m_audioFrameInput == nullptr)
+                return;
+
+            const int required = args->RequiredSamples;
+            if (required <= 0)
+                return;
+
+            auto frame = GenerateAudioFrame((uint32_t)required);
+            if (frame != nullptr)
+                m_audioFrameInput->AddFrame(frame);
+        }
+
+        bool InitializeAudioGraph()
+        {
+            try
+            {
+                auto defaultId =
+                    MediaDevice::GetDefaultAudioRenderId(
+                        AudioDeviceRole::Default);
+                if (defaultId == nullptr || defaultId->Length() == 0u)
+                    return false;
+
+                auto device = concurrency::create_task(
+                    DeviceInformation::CreateFromIdAsync(defaultId)).get();
+                if (device == nullptr)
+                    return false;
+
+                auto settings =
+                    ref new AudioGraphSettings(
+                        AudioRenderCategory::GameEffects);
+                settings->QuantumSizeSelectionMode =
+                    QuantumSizeSelectionMode::SystemDefault;
+                settings->PrimaryRenderDevice = device;
+
+                auto createResult = concurrency::create_task(
+                    AudioGraph::CreateAsync(settings)).get();
+                if (createResult == nullptr ||
+                    createResult->Status !=
+                        AudioGraphCreationStatus::Success ||
+                    createResult->Graph == nullptr)
+                {
+                    return false;
+                }
+
+                m_audioGraph = createResult->Graph;
+
+                auto outputResult = concurrency::create_task(
+                    m_audioGraph->CreateDeviceOutputNodeAsync()).get();
+                if (outputResult == nullptr ||
+                    outputResult->Status !=
+                        AudioDeviceNodeCreationStatus::Success ||
+                    outputResult->DeviceOutputNode == nullptr)
+                {
+                    return false;
+                }
+
+                m_audioOutput = outputResult->DeviceOutputNode;
+
+                auto encoding = m_audioGraph->EncodingProperties;
+                if (encoding == nullptr ||
+                    encoding->SampleRate == 0u ||
+                    encoding->ChannelCount == 0u)
+                {
+                    return false;
+                }
+
+                m_audioSampleRate = encoding->SampleRate;
+                m_audioChannels = encoding->ChannelCount;
+
+                m_audioFrameInput =
+                    m_audioGraph->CreateFrameInputNode(encoding);
+                if (m_audioFrameInput == nullptr)
+                    return false;
+
+                m_audioFrameInput->AddOutgoingConnection(m_audioOutput);
+                m_audioFrameInput->QuantumStarted +=
+                    ref new TypedEventHandler<
+                        AudioFrameInputNode^,
+                        FrameInputNodeQuantumStartedEventArgs^>(
+                            this, &App::OnAudioQuantumStarted);
+
+                m_audioFrameInput->Stop();
+                m_audioGraph->Start();
+                m_audioOk = true;
+                m_audioFrameInput->Start();
+                return true;
+            }
+            catch (Platform::Exception^)
+            {
+                m_audioOk = false;
+                return false;
+            }
+        }
+
         bool IsGamepadAHeld()
         {
             auto pads = Gamepad::Gamepads;
@@ -394,6 +567,13 @@ namespace BlueWakeUWP
         bool m_realModuleOk = false;
         bool m_chassisOk = false;
         bool m_audioOk = false;
+        AudioGraph^ m_audioGraph = nullptr;
+        AudioDeviceOutputNode^ m_audioOutput = nullptr;
+        AudioFrameInputNode^ m_audioFrameInput = nullptr;
+        uint32_t m_audioSampleRate = 0u;
+        uint32_t m_audioChannels = 0u;
+        uint64_t m_audioFramesGenerated = 0u;
+        uint64_t m_audioFramesSubmitted = 0u;
         D3D12Probe m_renderer;
     };
 
